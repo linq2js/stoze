@@ -30,6 +30,11 @@ export default function createState(defaultValue) {
         return props.value;
       },
       set value(value) {
+        if (isPromiseLike(value)) {
+          throw new Error(
+            "Do not assign promise value to state. Should use state.update(promise) to handle async value"
+          );
+        }
         props.lock = undefined;
         props.error = undefined;
         props.value = value;
@@ -53,23 +58,19 @@ export default function createState(defaultValue) {
         return props.loadable;
       },
       update(value, reducer) {
-        if (arguments.length > 1) {
-          if (isPromiseLike(value)) {
-            const promise = value;
-            state.startUpdating(promise);
-            value.then(
-              (result) =>
-                state.endUpdating(
-                  promise,
-                  reducer ? reducer(props.value, result) : result
-                ),
-              (error) => state.endUpdating(promise, props.value, error)
-            );
-          } else {
-            state.value = reducer(props.value, value);
-          }
+        if (isPromiseLike(value)) {
+          const promise = value;
+          state.startUpdating(promise);
+          value.then(
+            (result) =>
+              state.endUpdating(
+                promise,
+                reducer ? reducer(props.value, result) : result
+              ),
+            (error) => state.endUpdating(promise, props.value, error)
+          );
         } else {
-          state.value = value;
+          state.value = reducer ? reducer(props.value, value) : value;
         }
       },
       startUpdating(lock = {}) {
