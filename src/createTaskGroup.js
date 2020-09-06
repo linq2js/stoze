@@ -1,5 +1,6 @@
 import createTask from "./createTask";
-import { doneTask } from "./types";
+
+export const doneTask = createTask((callback) => callback(undefined));
 
 export default function createTaskGroup(tasks) {
   if (tasks.length === 0) return doneTask;

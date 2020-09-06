@@ -7,9 +7,11 @@ import createTask from "./createTask";
 import isEqual from "./isEqual";
 import isPromiseLike from "./isPromiseLike";
 import createEffectContext from "./createEffectContext";
-import { doneTask, noop } from "./types";
+import { noop } from "./types";
 import storeHook from "./useStore";
 import watch from "./watch";
+
+export const doneTask = createTask((callback) => callback(undefined));
 
 export default function createStore(defaultState = {}, { init } = {}) {
   const emitter = createEmitter();
