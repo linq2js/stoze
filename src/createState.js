@@ -51,11 +51,15 @@ export default function createState(defaultValue) {
         }
         return props.loadable;
       },
-      load(value) {
+      load(value, reducer) {
         const promise = value;
         state.startUpdating(promise);
         value.then(
-          (result) => state.endUpdating(promise, result),
+          (result) =>
+            state.endUpdating(
+              promise,
+              reducer ? reducer(props.value, result) : result
+            ),
           (error) => state.endUpdating(promise, props.value, error)
         );
       },
