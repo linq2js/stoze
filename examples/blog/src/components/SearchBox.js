@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import UpdateFilter from "../mutations/UpdateFilter";
+import Search from "../effects/Search";
 import store from "../store";
 
 export default function SearchBox() {
@@ -7,7 +7,7 @@ export default function SearchBox() {
 
   function handleChange(e) {
     setFilterText(e.target.value);
-    store.dispatch(UpdateFilter, e.target.value);
+    store.dispatch(Search, e.target.value);
   }
 
   return (
@@ -19,7 +19,7 @@ export default function SearchBox() {
         placeholder="Enter post id (#number) or free text"
         style={{ width: 400 }}
       />
-      <p/>
+      <p />
     </div>
   );
 }
