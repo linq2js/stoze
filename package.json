@@ -1,6 +1,6 @@
 {
   "name": "stoze",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Zero-configuration store for React. One API rule them all",
   "main": "dist/index.js",
   "types": "src/index.d.ts",

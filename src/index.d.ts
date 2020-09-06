@@ -139,7 +139,8 @@ export type RemoveListener = () => void;
 export interface State<T> {
   state: "loading" | "hasValue" | "hasError";
   error: any;
-  value: T | Promise<T>;
+  value: T;
+  load(promise: Promise<T>): void;
 }
 
 export type StoreStateInfer<T> = {

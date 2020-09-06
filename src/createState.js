@@ -1,6 +1,5 @@
 import createLoadable from "./createLoadable";
 import createObject from "./createObject";
-import isPromiseLike from "./isPromiseLike";
 
 export default function createState(defaultValue) {
   const props = {
@@ -30,15 +29,6 @@ export default function createState(defaultValue) {
         return props.value;
       },
       set value(value) {
-        if (isPromiseLike(value)) {
-          const promise = value;
-          state.startUpdating(promise);
-          value.then(
-            (result) => state.endUpdating(promise, result),
-            (error) => state.endUpdating(promise, props.value, error)
-          );
-          return;
-        }
         props.lock = undefined;
         props.error = undefined;
         props.value = value;
@@ -60,6 +50,14 @@ export default function createState(defaultValue) {
           );
         }
         return props.loadable;
+      },
+      load(value) {
+        const promise = value;
+        state.startUpdating(promise);
+        value.then(
+          (result) => state.endUpdating(promise, result),
+          (error) => state.endUpdating(promise, props.value, error)
+        );
       },
       startUpdating(lock = {}) {
         const isLoading = props.state === "loading";
