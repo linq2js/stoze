@@ -16,7 +16,8 @@ export default function createEffectContext(
     delay: createDelayMethod(subTask, dispatch),
     latest: createLatestMethod(lastTask),
     dispatch: createDispatchMethod(dispatch, cancelled),
-    when: createWhenMethod(subTask, onDispatch, dispatch),
+    when: createWhenMethod(subTask, onDispatch),
+    on: createOnMethod(subTask, onDispatch, dispatch),
     race: createAsyncMethod(true, subTask, dispatch),
     all: createAsyncMethod(false, subTask, dispatch),
     pipe: createPipeMethod(subTask, cancelled, dispatch),
@@ -38,9 +39,7 @@ function createPipeMethod(taskFactory, parentCancelled, dispatch) {
           try {
             onDispose(
               watch(
-                Array.isArray(fn)
-                  ? dispatch(...fn)
-                  : dispatch(fn, payload),
+                Array.isArray(fn) ? dispatch(...fn) : dispatch(fn, payload),
                 (result, error) =>
                   error ? callback(undefined, error) : next(result)
               )
@@ -115,7 +114,22 @@ function createDispatchMethod(dispatch, cancelled) {
   };
 }
 
-function createWhenMethod(taskFactory, onDispatch, dispatch) {
+function createWhenMethod(taskFactory, onDispatch) {
+  return function (targetAction) {
+    const targetActions = Array.isArray(targetAction)
+      ? targetAction
+      : [targetAction];
+    return taskFactory((taskCallback, { onDispose }) => {
+      const unsubscribe = onDispatch((args) => {
+        if (!targetActions.includes(args.action)) return;
+        taskCallback(args);
+      });
+      onDispose(unsubscribe);
+    });
+  };
+}
+
+function createOnMethod(taskFactory, onDispatch, dispatch) {
   return function (targetAction, dispatchAction, payload) {
     const hasPayload = arguments.length > 2;
     const targetActions = Array.isArray(targetAction)
@@ -124,11 +138,7 @@ function createWhenMethod(taskFactory, onDispatch, dispatch) {
     return taskFactory((taskCallback, { onDispose }) => {
       const unsubscribe = onDispatch((args) => {
         if (!targetActions.includes(args.action)) return;
-        if (!dispatchAction) {
-          unsubscribe && unsubscribe();
-        }
-        taskCallback(args);
-        dispatchAction && dispatch(dispatchAction, hasPayload ? payload : args);
+        dispatch(dispatchAction, hasPayload ? payload : args);
       });
       onDispose(unsubscribe);
     });

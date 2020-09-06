@@ -2,7 +2,7 @@ import is from "./is";
 import isPromiseLike from "./isPromiseLike";
 
 export default function watch(target, callback) {
-  let active = false;
+  let active = true;
   if (is(target).task) {
     const removeSuccessListener = target.onSuccess((result) =>
       callback(result)
@@ -18,8 +18,14 @@ export default function watch(target, callback) {
     };
   } else if (isPromiseLike(target)) {
     target.then(
-      (result) => active && callback(result),
-      (error) => active && callback(undefined, error)
+      (result) => {
+        if (!active) return;
+        callback(result);
+      },
+      (error) => {
+        if (!active) return;
+        callback(undefined, error);
+      }
     );
     return () => {
       active = false;

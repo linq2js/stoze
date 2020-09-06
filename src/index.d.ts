@@ -58,8 +58,10 @@ export interface EffectContext<TState = any> {
   all<T>(tasks: T, effect: Effect<T, AsyncCallbackInfer<T, any>>): Task;
   all<T>(tasks: T, action: MutationInfer<T>): Task;
 
-  when(action: Action, callback?: (payload: any) => any): Task;
-  when(actions: Action[], callback?: (payload: any) => any): Task;
+  when(action: Action): Task;
+  when(actions: Action[]): Task;
+  on<T>(action: Action, callback: Action<T>, payload?: T): Task;
+  on<T>(actions: Action[], callback: Action<T>, payload?: T): Task;
   dispatch: Dispatcher<TState>;
 }
 
@@ -141,6 +143,7 @@ export interface State<T> {
   error: any;
   value: T;
   load(promise: Promise<T>): void;
+  load<U>(promise: Promise<U>, reducer: (value: T, resolved: U) => T): void;
 }
 
 export type StoreStateInfer<T> = {

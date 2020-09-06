@@ -9,10 +9,10 @@ test("task.result()", () => {
   expect(task.result()).toBe(1);
 });
 
-test("when(target, action)", () => {
+test("on(action, callbackAction)", () => {
   const callback = jest.fn();
-  const ClickSaga = (payload, { when }) => {
-    return when(Click, callback);
+  const ClickSaga = (payload, { on }) => {
+    return on(Click, callback);
   };
   const Click = {};
   const store = stoze();
@@ -23,10 +23,10 @@ test("when(target, action)", () => {
   expect(callback).toBeCalledTimes(3);
 });
 
-test("when(target, action, payload)", () => {
+test("on(action, callbackAction, payload)", () => {
   const callback = jest.fn();
-  const ClickSaga = (payload, { when }) => {
-    return when(Click, callback, 1);
+  const ClickSaga = (payload, { on }) => {
+    return on(Click, callback, 1);
   };
   const Click = {};
   const store = stoze();
@@ -102,8 +102,8 @@ test("latest effect", async () => {
 test("handle future dispatching", async () => {
   const callback = jest.fn();
   const Login = {};
-  const LoginSaga = (payload, { when }) => {
-    when(Login, ({ payload }) => {
+  const LoginSaga = (payload, { on }) => {
+    return on(Login, ({ payload }) => {
       callback(payload);
     });
   };
@@ -230,5 +230,23 @@ test("pipe", () => {
   store.dispatch(CheatCodeSaga);
   store.dispatch(Up);
   store.dispatch(Down);
+  expect(callback).toBeCalledTimes(1);
+});
+
+test("pipe([promiseFactory, callback])", async () => {
+  const callback = jest.fn();
+  const Effect = (payload, { pipe, when }) => {
+    return pipe([() => delay(10), callback]);
+  };
+  const store = stoze();
+
+  store.dispatch(Effect);
+  expect(callback).toBeCalledTimes(0);
+  await delay(20);
+  expect(callback).toBeCalledTimes(1);
+
+  const t = store.dispatch(Effect);
+  t.cancel();
+  await delay(5);
   expect(callback).toBeCalledTimes(1);
 });
