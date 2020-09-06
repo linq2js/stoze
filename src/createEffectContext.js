@@ -38,10 +38,8 @@ function createPipeMethod(taskFactory, parentCancelled, dispatch) {
         } else {
           try {
             onDispose(
-              watch(
-                Array.isArray(fn) ? dispatch(...fn) : dispatch(fn, payload),
-                (result, error) =>
-                  error ? callback(undefined, error) : next(result)
+              watch(dispatch(fn, payload), (result, error) =>
+                error ? callback(undefined, error) : next(result)
               )
             );
           } catch (e) {
@@ -57,10 +55,10 @@ function createPipeMethod(taskFactory, parentCancelled, dispatch) {
 
 function createDelayMethod(taskFactory, dispatch) {
   return function (ms, actionOrValue, payload) {
-    const hasEffect = arguments.length > 1;
+    const hasAction = arguments.length > 1;
     return taskFactory((callback) => {
       setTimeout(() => {
-        if (hasEffect) {
+        if (hasAction) {
           if (
             typeof actionOrValue === "function" ||
             typeof actionOrValue === "object"

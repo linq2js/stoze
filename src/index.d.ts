@@ -142,8 +142,15 @@ export interface State<T> {
   state: "loading" | "hasValue" | "hasError";
   error: any;
   value: T;
-  load(promise: Promise<T>): void;
-  load<U>(promise: Promise<U>, reducer: (value: T, resolved: U) => T): void;
+  rawValue: T;
+  update(promise: Promise<T>): void;
+  update<U>(
+    promise: Promise<U>,
+    reducer: (prevValue: T, nextValue: U) => T
+  ): void;
+
+  update(nextValue: T): void;
+  update<U>(nextValue: U, reducer: (prevValue: T, nextValue: U) => T): void;
 }
 
 export type StoreStateInfer<T> = {
