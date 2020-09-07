@@ -8,7 +8,7 @@ export interface DefaultExport extends Function {
     selectors: Function[],
     combiner: (...args) => T
   ): (...args: any[]) => T;
-  asyncQueue(promise): AsyncQueue
+  asyncQueue(promise): AsyncQueue;
 }
 
 export type StoreInfer<T> = Store<StoreStateInfer<T>>;
@@ -155,12 +155,9 @@ export interface State<T> {
 }
 
 export interface AsyncQueue {
-  readonly state: "processing" | "succeeded" | "failed";
-  readonly processing: boolean;
-  readonly failed: boolean;
-  readonly succeeded: boolean;
-  readonly done: boolean;
-  error: any;
+  readonly state: "processing" | "completed" | "failed";
+  readonly completed: boolean;
+  readonly error: any;
   add(item: Promise<any>): AsyncQueue;
   add(items: Promise<any>[]): AsyncQueue;
 }

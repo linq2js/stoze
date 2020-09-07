@@ -1,6 +1,12 @@
+const states = {
+  processing: "processing",
+  completed: "completed",
+  failed: "failed",
+};
+
 export default function createAsyncQueue(promise) {
   const props = {
-    state: "succeeded",
+    state: states.completed,
     error: undefined,
   };
   const queue = {
@@ -8,24 +14,16 @@ export default function createAsyncQueue(promise) {
       return props.state;
     },
     get error() {
-      verifyStatus();
       return props.error;
     },
-    get processing() {
-      verifyStatus();
-      return props.state === "processing";
-    },
-    get failed() {
-      verifyStatus();
-      return props.state === "failed";
-    },
-    get succeeded() {
-      verifyStatus();
-      return props.state === "succeeded";
-    },
-    get done() {
-      verifyStatus();
-      return props.state !== "processing";
+    get completed() {
+      if (props.state === states.processing) {
+        throw props.promise;
+      }
+      if (props.state === states.failed) {
+        throw props.error;
+      }
+      return true;
     },
     add(item) {
       const promises = Array.isArray(item) ? item : [item];
@@ -36,27 +34,19 @@ export default function createAsyncQueue(promise) {
     },
   };
 
-  function verifyStatus() {
-    if (props.state === "processing") {
-      throw props.promise;
-    }
-    if (props.state === "failed") {
-      throw props.error;
-    }
-  }
-
   if (promise) {
     const promises = Array.isArray(promise) ? promise : [promise];
     props.promise = promises.length === 1 ? promises[0] : Promise.all(promises);
     props.promise.then(
       () => {
-        props.state = "succeeded";
+        props.state = states.completed;
       },
       (error) => {
-        props.state = "failed";
+        props.state = states.failed;
         props.error = error;
       }
     );
+    props.state = states.processing;
   }
 
   return queue;
