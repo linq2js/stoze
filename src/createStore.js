@@ -79,7 +79,7 @@ export default function createStore(defaultState = {}, { init } = {}) {
       return;
     }
 
-    const stateObject = createState(value);
+    const stateObject = createState(value, { mutable: true });
     stateObjects[prop] = stateObject;
     Object.defineProperty(rawValueAccessor, prop, {
       get() {
@@ -260,7 +260,7 @@ export default function createStore(defaultState = {}, { init } = {}) {
       if (nextValue !== currentValue) {
         dispatchContext.hasChange = true;
       }
-      stateObject.value = nextValue;
+      stateObject.update(nextValue);
     });
   }
 

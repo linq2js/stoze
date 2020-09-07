@@ -8,6 +8,7 @@ export interface DefaultExport extends Function {
     selectors: Function[],
     combiner: (...args) => T
   ): (...args: any[]) => T;
+  asyncQueue(promise): AsyncQueue
 }
 
 export type StoreInfer<T> = Store<StoreStateInfer<T>>;
@@ -139,18 +140,29 @@ export type ChangeListener<TState> = Listener<{
 export type RemoveListener = () => void;
 
 export interface State<T> {
-  state: "loading" | "hasValue" | "hasError";
-  error: any;
-  value: T;
-  rawValue: T;
+  readonly state: "loading" | "hasValue" | "hasError";
+  readonly error: any;
+  readonly value: T;
+  readonly rawValue: T;
   update(promise: Promise<T>): void;
   update<U>(
     promise: Promise<U>,
     reducer: (prevValue: T, nextValue: U) => T
   ): void;
-
   update(nextValue: T): void;
+  update(reducer: (prevValue?: T) => T): void;
   update<U>(nextValue: U, reducer: (prevValue: T, nextValue: U) => T): void;
+}
+
+export interface AsyncQueue {
+  readonly state: "processing" | "succeeded" | "failed";
+  readonly processing: boolean;
+  readonly failed: boolean;
+  readonly succeeded: boolean;
+  readonly done: boolean;
+  error: any;
+  add(item: Promise<any>): AsyncQueue;
+  add(items: Promise<any>[]): AsyncQueue;
 }
 
 export type StoreStateInfer<T> = {

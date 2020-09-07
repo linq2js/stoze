@@ -59,7 +59,7 @@ function createService(name, url, { detailProps = [] } = {}) {
 
       return {
         total: filteredItems.length,
-        items: sliceList(filteredItems, pagination)
+        items: sliceList(filteredItems, pagination),
       };
     }),
     getOne: createMethod((list, id) => {
@@ -77,7 +77,7 @@ function createService(name, url, { detailProps = [] } = {}) {
     remove: createMethod((list, id) => {
       const index = list.findIndex((item) => item.id === id);
       index !== -1 && list.splice(index, 1);
-    })
+    }),
   };
 }
 

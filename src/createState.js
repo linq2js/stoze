@@ -2,7 +2,8 @@ import createLoadable from "./createLoadable";
 import createObject from "./createObject";
 import isPromiseLike from "./isPromiseLike";
 
-export default function createState(defaultValue) {
+export default function createState(defaultValue, options = {}) {
+  const { mutable = false } = options;
   const props = {
     state: "hasValue",
     value: undefined,
@@ -18,6 +19,38 @@ export default function createState(defaultValue) {
     delete props.loadable;
   }
 
+  function checkMutable() {
+    if (!mutable) throw new Error("Cannot mutate immutable state");
+  }
+
+  function update(value, reducer) {
+    // update(reducer);
+    if (typeof value === "function") {
+      return update(value(props.value));
+    }
+
+    // update(promise, reducer)
+    if (isPromiseLike(value)) {
+      const promise = value;
+      state.startUpdating(promise);
+      value.then(
+        (result) =>
+          state.endUpdating(
+            promise,
+            reducer ? reducer(props.value, result) : result
+          ),
+        (error) => state.endUpdating(promise, props.value, error)
+      );
+    } else {
+      // update(value, reducer)
+      props.lock = undefined;
+      props.error = undefined;
+      props.value = reducer ? reducer(props.value, value) : value;
+      props.state = "hasValue";
+      delete props.loadable;
+    }
+  }
+
   const state = createObject(
     { state: true },
     {
@@ -28,18 +61,6 @@ export default function createState(defaultValue) {
         if (props.state === "loading") throw this.loadable.promise;
         if (props.state === "hasError") throw this.error;
         return props.value;
-      },
-      set value(value) {
-        if (isPromiseLike(value)) {
-          throw new Error(
-            "Do not assign promise value to state. Should use state.update(promise) to handle async value"
-          );
-        }
-        props.lock = undefined;
-        props.error = undefined;
-        props.value = value;
-        props.state = "hasValue";
-        delete props.loadable;
       },
       get state() {
         return props.state;
@@ -58,22 +79,13 @@ export default function createState(defaultValue) {
         return props.loadable;
       },
       update(value, reducer) {
-        if (isPromiseLike(value)) {
-          const promise = value;
-          state.startUpdating(promise);
-          value.then(
-            (result) =>
-              state.endUpdating(
-                promise,
-                reducer ? reducer(props.value, result) : result
-              ),
-            (error) => state.endUpdating(promise, props.value, error)
-          );
-        } else {
-          state.value = reducer ? reducer(props.value, value) : value;
+        if (!mutable) {
+          return createState((update) => update(...arguments), options);
         }
+        return update(value, reducer);
       },
       startUpdating(lock = {}) {
+        checkMutable();
         const isLoading = props.state === "loading";
         props.state = "loading";
         props.lock = lock;
@@ -83,6 +95,7 @@ export default function createState(defaultValue) {
         return props.lock;
       },
       cancelUpdating(lock) {
+        if (!mutable) return;
         if (props.lock !== lock || props.state !== "loading") return false;
         props.lock = undefined;
         props.state = "hasValue";
@@ -90,6 +103,7 @@ export default function createState(defaultValue) {
         return true;
       },
       endUpdating(lock, value, error) {
+        checkMutable();
         // invalid lock
         if (lock !== props.lock) return false;
         delete props.lock;
@@ -109,7 +123,18 @@ export default function createState(defaultValue) {
     }
   );
 
-  state.value = defaultValue;
+  let initializing = true;
+  if (typeof defaultValue === "function") {
+    defaultValue(function () {
+      if (!initializing) {
+        throw new Error("State is already initialized");
+      }
+      return update(...arguments);
+    });
+  } else {
+    update(defaultValue);
+  }
+  initializing = false;
 
   return state;
 }
