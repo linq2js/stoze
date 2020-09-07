@@ -1,11 +1,13 @@
 import stoze from "stoze";
-import selectPosts from "./selectors/selectPosts";
+import selectCommentAddingStatus from "./selectors/selectCommentAddingStatus";
 
 export default stoze({
-  pagination: { index: 0, size: 5, total: 0 },
+  pagination: { index: 0, size: 5 },
+  totalPosts: 0,
   postIds: [],
   postData: {},
   filter: undefined,
+  statuses: {},
   // selectors
-  posts: selectPosts
+  commentAddingStatus: selectCommentAddingStatus
 });

@@ -1,19 +1,21 @@
-import React, { useEffect } from "react";
+import React, { useEffect, memo } from "react";
 import LoadPosts from "../effects/LoadPosts";
 import JumpToPage from "../mutations/JumpToPage";
 import store from "../store";
 import Post from "./Post";
 
-export default function PostList() {
-  const { posts, pagination, filter } = store.select((state) => {
+export default memo(function PostList() {
+  const { postIds, pagination, filter, totalPosts } = store.select((state) => {
     return {
-      posts: state.posts,
+      postIds: state.postIds,
       pagination: state.pagination,
       filter: state.filter,
+      totalPosts: state.totalPosts
     };
   });
+
   // create page indexes
-  const pages = new Array(Math.ceil(pagination.total / pagination.size))
+  const pages = new Array(Math.ceil(totalPosts / pagination.size))
     .fill(0)
     .map((value, index) => index);
 
@@ -28,15 +30,15 @@ export default function PostList() {
   // fetch posts whenever pagination changed
   useEffect(() => {
     store.dispatch(LoadPosts);
-  }, [pagination.index, filter]);
+  }, [pagination, filter]);
 
-  if (!posts.length) return <div>No post</div>;
+  if (!postIds.length) return <div>No post</div>;
 
   return (
     <>
       <div>
-        {posts.map((post) => (
-          <Post key={post.id} {...post} />
+        {postIds.map((id) => (
+          <Post key={id} id={id} />
         ))}
       </div>
       <div className="pagination">
@@ -52,4 +54,4 @@ export default function PostList() {
       </div>
     </>
   );
-}
+});

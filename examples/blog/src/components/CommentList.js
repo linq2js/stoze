@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, memo } from "react";
+import React, { Suspense, useRef, memo, useLayoutEffect } from "react";
 import LoadComments from "../effects/LoadComments";
 import AddComment from "../effects/AddComment";
 import store from "../store";
@@ -8,11 +8,12 @@ export default memo(function CommentList({ postId }) {
     const post = state.postData[postId];
     return post.comments && post.comments.value;
   });
-  const commentNotInitialized = !comments;
 
-  useEffect(() => {
-    store.dispatch(LoadComments, postId);
-  }, [postId, commentNotInitialized]);
+  useLayoutEffect(() => {
+    if (!comments) {
+      store.dispatch(LoadComments, postId);
+    }
+  }, [postId, comments]);
 
   if (!comments) return null;
 
@@ -20,18 +21,23 @@ export default memo(function CommentList({ postId }) {
 
   return (
     <>
+      <h4>Comments:</h4>
       <ul className="post-comments">
         {comments.map((comment) => (
           <li key={comment.id}>{comment.body}</li>
         ))}
       </ul>
-      <CommentForm postId={postId} />
+      <Suspense fallback="Submitting comment...">
+        <CommentForm postId={postId} />
+      </Suspense>
       <p></p>
     </>
   );
 });
-function CommentForm({ postId }) {
+const CommentForm = memo(function ({ postId }) {
+  store.select((state) => state.$.commentAddingStatus(postId));
   const inputRef = useRef();
+
   function handleSubmit(e) {
     e.preventDefault();
     store.dispatch(AddComment, { postId, body: inputRef.current.value });
@@ -48,4 +54,4 @@ function CommentForm({ postId }) {
       />
     </form>
   );
-}
+});

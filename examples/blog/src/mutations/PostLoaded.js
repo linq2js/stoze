@@ -4,11 +4,14 @@ export default {
   },
   postData(value, listPayload) {
     return listPayload.items.reduce((obj, post) => {
-      obj[post.id] = post;
+      obj[post.id] = {
+        ...obj[post.id],
+        ...post
+      };
       return obj;
-    }, {});
+    }, value);
   },
-  pagination(value, listPayload) {
-    return { ...value, total: listPayload.total };
-  },
+  totalPosts(value, listPayload) {
+    return listPayload.total;
+  }
 };

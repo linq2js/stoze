@@ -1,5 +1,5 @@
 {
-  "name": "stoze-blog-demo",
+  "name": "stoze-blog-app",
   "version": "1.0.0",
   "description": "",
   "keywords": [],
@@ -8,8 +8,7 @@
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-scripts": "3.4.3",
-    "reselect": "^4.0.0",
-    "stoze": "^0.0.6"
+    "stoze": "0.0.12"
   },
   "devDependencies": {
     "typescript": "3.8.3",

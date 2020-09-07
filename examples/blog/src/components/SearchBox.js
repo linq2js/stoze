@@ -11,15 +11,12 @@ export default function SearchBox() {
   }
 
   return (
-    <div>
-      <input
-        type="text"
-        value={filterText}
-        onChange={handleChange}
-        placeholder="Enter post id (#number) or free text"
-        style={{ width: 400 }}
-      />
-      <p />
-    </div>
+    <input
+      type="text"
+      value={filterText}
+      onChange={handleChange}
+      placeholder="Enter post id (#number) or free text"
+      style={{ width: 400 }}
+    />
   );
 }
