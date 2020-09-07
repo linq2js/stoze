@@ -34,14 +34,14 @@ export default function createState(defaultValue, options = {}) {
     // update(promise, reducer)
     if (isPromiseLike(value)) {
       const promise = value;
-      state.startUpdating(promise);
+      startUpdating(promise);
       value.then(
-        (result) =>
-          state.endUpdating(
-            promise,
-            reducer ? reducer(props.value, result) : result
-          ),
-        (error) => state.endUpdating(promise, props.value, error)
+        (result) => {
+          endUpdating(promise, reducer ? reducer(props.value, result) : result);
+        },
+        (error) => {
+          endUpdating(promise, props.value, error);
+        }
       );
     } else {
       // update(value, reducer)
@@ -51,6 +51,34 @@ export default function createState(defaultValue, options = {}) {
       props.state = "hasValue";
       delete props.loadable;
     }
+  }
+
+  function startUpdating(lock = {}) {
+    const isLoading = props.state === "loading";
+    props.state = "loading";
+    props.lock = lock;
+    if (!isLoading) {
+      cleanLoadable();
+    }
+    return props.lock;
+  }
+
+  function endUpdating(lock, value, error) {
+    // invalid lock
+    if (lock !== props.lock) return false;
+    delete props.lock;
+    delete props.error;
+    cleanLoadable();
+    if (error) {
+      props.error = error;
+      props.state = "hasError";
+    } else {
+      props.state = "hasValue";
+      // nothing to change
+      if (props.value === value) return false;
+      props.value = value;
+    }
+    return true;
   }
 
   const state = createObject(
@@ -86,15 +114,9 @@ export default function createState(defaultValue, options = {}) {
         }
         return update(value, reducer);
       },
-      startUpdating(lock = {}) {
+      startUpdating() {
         checkMutable();
-        const isLoading = props.state === "loading";
-        props.state = "loading";
-        props.lock = lock;
-        if (!isLoading) {
-          cleanLoadable();
-        }
-        return props.lock;
+        return startUpdating(...arguments);
       },
       cancelUpdating(lock) {
         if (!mutable) return;
@@ -104,23 +126,9 @@ export default function createState(defaultValue, options = {}) {
         cleanLoadable();
         return true;
       },
-      endUpdating(lock, value, error) {
+      endUpdating() {
         checkMutable();
-        // invalid lock
-        if (lock !== props.lock) return false;
-        delete props.lock;
-        delete props.error;
-        cleanLoadable();
-        if (error) {
-          props.error = error;
-          props.state = "hasError";
-        } else {
-          props.state = "hasValue";
-          // nothing to change
-          if (props.value === value) return false;
-          props.value = value;
-        }
-        return true;
+        return endUpdating(...arguments);
       },
     }
   );

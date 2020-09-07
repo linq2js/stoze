@@ -3,6 +3,13 @@ import stoze from "../index";
 const delay = (ms, value) =>
   new Promise((resolve) => setTimeout(resolve, ms, value));
 
+test("should not allow copy selector collection", () => {
+  const store = stoze({ select() {} });
+  const copy = { ...store.state };
+  expect(copy.$).toBeUndefined();
+  expect(store.state.$).not.toBeUndefined();
+});
+
 test("task.result()", () => {
   const store = stoze();
   const task = store.dispatch(() => 1);

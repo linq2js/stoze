@@ -26,23 +26,33 @@ export default function createStore(defaultState = {}, { init } = {}) {
   const hookContext = { onChange, getSelectorArgs, getState };
   let currentState = defaultState;
 
+  Object.defineProperty(rawValueAccessor, "$", {
+    value: {},
+    enumerable: false,
+  });
+  Object.defineProperty(valueAccessor, "$", { value: {}, enumerable: false });
+  Object.defineProperty(loadableAccessor, "$", {
+    value: {},
+    enumerable: false,
+  });
+
   stateProps.forEach((prop) => {
     const value = defaultState[prop];
     // is selector
     if (typeof value === "function") {
       const selector = value;
       function valueWrapper() {
-        return selector(valueAccessor);
+        return selector(valueAccessor, ...arguments);
       }
       function rawValueWrapper() {
-        return selector(rawValueAccessor);
+        return selector(rawValueAccessor, ...arguments);
       }
       let loadable;
       function loadableWrapper() {
         let args;
         try {
           args = {
-            value: valueWrapper(),
+            value: valueWrapper(...arguments),
             state: "hasValue",
           };
         } catch (e) {
@@ -66,6 +76,10 @@ export default function createStore(defaultState = {}, { init } = {}) {
           loadable = createLoadable(args.state, args.value, args.error);
         }
       }
+
+      rawValueAccessor.$[prop] = rawValueWrapper;
+      valueAccessor.$[prop] = valueWrapper;
+      loadableAccessor.$[prop] = loadableWrapper;
 
       Object.defineProperty(rawValueAccessor, prop, {
         get: rawValueWrapper,

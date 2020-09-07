@@ -1,4 +1,4 @@
-import stoze, { Effect, EffectContext, MutationInfer } from "./index";
+import stoze, { EffectContext, Mutation } from "./index";
 
 interface State {
   count: number;
@@ -18,17 +18,21 @@ const store = stoze<State>({
   },
 });
 
-const Increase: MutationInfer<State> = {
-  count: (value, payload, state) => value + 1 + state.select,
+const Increase: Mutation<State> = {
+  count: (value, payload, state) => {
+    state.$.select(11);
+    return value + 1 + state.select;
+  },
 };
 
-const IncreaseAsync = (by = 1, { dispatch }: EffectContext<State>) => {
+const IncreaseAsync = (by = 1, { dispatch, state }: EffectContext<State>) => {
+  state.$.select(1, 2, state.select);
   dispatch(Increase);
 };
 
 function Cancel() {}
 
-const UpdateResults: MutationInfer<State> = {
+const UpdateResults: Mutation<State> = {
   results: (value, payload) => value.concat(payload),
 };
 
@@ -51,5 +55,14 @@ function Search(
 
 store.dispatch(Increase);
 store.dispatch(IncreaseAsync, 2);
-store.select((state, loadable) => {});
+store.select((state, loadable) => {
+  return {
+    p1: state.select,
+    p2: state.$.select(),
+    p4: loadable.select,
+    p3: loadable.$.select(1, 2),
+    p6: store.state.$.select(1, 2),
+    p7: store.state.select,
+  };
+});
 store.dispatch(Search, "aaa");
