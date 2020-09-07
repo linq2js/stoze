@@ -11,6 +11,7 @@ export default function createState(defaultValue, options = {}) {
     error: undefined,
     loadable: undefined,
   };
+  let initializing = true;
 
   function cleanLoadable() {
     if (props.loadable && props.loadable.resolve) {
@@ -20,6 +21,7 @@ export default function createState(defaultValue, options = {}) {
   }
 
   function checkMutable() {
+    if (initializing) return;
     if (!mutable) throw new Error("Cannot mutate immutable state");
   }
 
@@ -123,7 +125,6 @@ export default function createState(defaultValue, options = {}) {
     }
   );
 
-  let initializing = true;
   if (typeof defaultValue === "function") {
     defaultValue(function () {
       if (!initializing) {
