@@ -126,22 +126,35 @@ export default function createStore(
     // async reducer
     if ($async) {
       const modifiedAsyncStates =
-        typeof $async === "object"
+        typeof $async !== "function"
           ? $async
           : $async(
               asyncStates.loadableAccessorFn,
               payload,
               syncStates.rawValueAccessor
             );
-      Object.entries(modifiedAsyncStates).forEach(([prop, value]) => {
-        // remove async state
-        if (typeof value === "undefined" || value === null) {
-          asyncStates.unset(prop);
-        } else {
-          asyncStates.set(prop, value);
-        }
-        dispatchContext.hasChange = true;
-      });
+      if (Array.isArray(modifiedAsyncStates)) {
+        // using key and value pair to update multiple async states
+        modifiedAsyncStates.forEach(({ key, value }) => {
+          if (typeof value === "undefined" || value === null) {
+            asyncStates.unset(key);
+          } else {
+            asyncStates.set(key, value);
+          }
+          dispatchContext.hasChange = true;
+        });
+      } else {
+        // using value map to update multiple async states { prop1: value1, prop2: value2 }
+        Object.entries(modifiedAsyncStates).forEach(([prop, value]) => {
+          // remove async state
+          if (typeof value === "undefined" || value === null) {
+            asyncStates.unset(prop);
+          } else {
+            asyncStates.set(prop, value);
+          }
+          dispatchContext.hasChange = true;
+        });
+      }
     }
 
     const entries = Object.entries(mutation).map(([key, reducer]) => {

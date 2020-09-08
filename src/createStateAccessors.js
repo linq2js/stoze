@@ -1,14 +1,17 @@
+import createArrayKeyedMap from "./createArrayKeyedMap";
 import createLoadable from "./createLoadable";
 import createState from "./createState";
 import isPromiseLike from "./isPromiseLike";
 
 const undefinedLoadable = createLoadable("hasValue", undefined);
+let propId = 1;
 
-export default function createStateAccessors(defaultState, mutable) {
+export default function createStateAccessors(state, mutable) {
   const stateObjects = {};
   const rawValueAccessor = {};
   const valueAccessor = {};
   const loadableAccessor = {};
+  const propNames = createArrayKeyedMap();
 
   Object.defineProperty(rawValueAccessor, "$select", {
     value: {},
@@ -23,8 +26,17 @@ export default function createStateAccessors(defaultState, mutable) {
     enumerable: false,
   });
 
-  Object.keys(defaultState).forEach((prop) => {
-    const value = defaultState[prop];
+  // convert array of key/value pairs to value map
+  if (Array.isArray(state)) {
+    const temp = {};
+    state.forEach(({ key, value }) => {
+      temp[getPropName(key)] = value;
+    });
+    state = temp;
+  }
+
+  Object.keys(state).forEach((prop) => {
+    const value = state[prop];
     // is selector
     if (typeof value === "function") {
       const selector = value;
@@ -92,11 +104,28 @@ export default function createStateAccessors(defaultState, mutable) {
     set(prop, value);
   });
 
+  function getPropName(prop) {
+    if (Array.isArray(prop)) {
+      return propNames.getOrAdd(prop, () => {
+        return "#prop_" + propId++;
+      });
+    }
+    return prop;
+  }
+
+  function removePropName(prop) {
+    if (Array.isArray(prop)) {
+      propNames.delete(prop);
+    }
+  }
+
   function unset(prop) {
-    stateObjects[prop] = undefined;
+    stateObjects[getPropName(prop)] = undefined;
+    removePropName(prop);
   }
 
   function set(prop, value) {
+    prop = getPropName(prop);
     const isNew = !(prop in stateObjects);
     stateObjects[prop] = mutable
       ? createState(value, { mutable: true })
@@ -129,12 +158,12 @@ export default function createStateAccessors(defaultState, mutable) {
     stateObjects,
     valueAccessor,
     valueAccessorFn(key, defaultValue) {
-      const value = valueAccessor[key];
+      const value = valueAccessor[getPropName(key)];
       return typeof value === "undefined" ? defaultValue : value;
     },
     loadableAccessor,
     loadableAccessorFn(key, defaultValue) {
-      const value = loadableAccessor[key];
+      const value = loadableAccessor[getPropName(key)];
       if (!value)
         return typeof defaultValue === "undefined"
           ? undefinedLoadable
@@ -143,7 +172,7 @@ export default function createStateAccessors(defaultState, mutable) {
     },
     rawValueAccessor,
     rawValueAccessorFn(key, defaultValue) {
-      const value = rawValueAccessor[key];
+      const value = rawValueAccessor[getPropName(key)];
       return typeof value === "undefined" ? defaultValue : value;
     },
     set,

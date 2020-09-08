@@ -103,7 +103,7 @@ export type StoreLoadableExtraProps<T> = {
       ? Selector<Loadable<TResult>>
       : never;
   };
-  $async(key: string, defaultValue?: any): Loadable<any>;
+  $async(key: string | any[], defaultValue?: any): Loadable<any>;
 };
 
 export type StateLoadableInfer<T> = StoreLoadableExtraProps<T> &
@@ -130,7 +130,11 @@ export type MutationInfer<TState> =
   | {
       $async:
         | AsyncReducer<TState>
-        | { [key: string]: Promise<any> | undefined | null | any };
+        | { [key: string]: Promise<any> | undefined | null | any }
+        | {
+            key: string | any[];
+            value: Promise<any> | undefined | null | any;
+          }[];
     }
   | {
       [key in keyof TState]?: Reducer<TState, TState[key]>;
@@ -203,7 +207,7 @@ export type StoreStateExtraProps<T> = {
       ? Selector<TResult>
       : never;
   };
-  $async(key: string, defaultValue?: any): any;
+  $async(key: string | any[], defaultValue?: any): any;
 };
 
 export interface AsyncState {
