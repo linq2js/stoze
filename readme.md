@@ -3,3 +3,6 @@
 ## Real world examples
 
 1. Blog App ([CodeSandbox](https://codesandbox.io/s/stoze-blog-app-qfi25))
+1. Counter App ([CodeSandbox](https://codesandbox.io/s/stoze-counter-app-z2tbx))
+1. Counter App with Suspense ([CodeSandbox](https://codesandbox.io/s/stoze-counter-app-with-suspense-8wumq?file=/src/App.js))
+1. Todo App ([CodeSandbox](https://codesandbox.io/s/stoze-todo-app-6pd9p?file=/src/store/index.js))

@@ -1,17 +1,29 @@
 export default function createSelector(selectors, combiner) {
-  let lastArgs;
+  let lastMappedArgs;
+  let lastInputArgs;
   let lastResult;
-  return (...inputArgs) => {
+  const wrapper = (...inputArgs) => {
+    if (!wrapper.__ignoreInputArgsChecking) {
+      if (
+        lastInputArgs &&
+        lastInputArgs.length === inputArgs.length &&
+        lastInputArgs.every((value, index) => value === inputArgs[index])
+      ) {
+        return lastResult;
+      }
+    }
+    lastInputArgs = inputArgs;
     const currentArgs = selectors
       .map((selector) => selector(...inputArgs))
       .concat(inputArgs.slice(1));
     if (
-      !lastArgs ||
-      lastArgs.some((arg, index) => arg !== currentArgs[index])
+      !lastMappedArgs ||
+      lastMappedArgs.some((arg, index) => arg !== currentArgs[index])
     ) {
-      lastArgs = currentArgs;
+      lastMappedArgs = currentArgs;
       lastResult = combiner(...currentArgs);
     }
     return lastResult;
   };
+  return wrapper;
 }

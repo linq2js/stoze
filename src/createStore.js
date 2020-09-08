@@ -34,9 +34,9 @@ export default function createStore(
     currentState = defaultSyncState;
     syncStates = createStateAccessors(defaultSyncState, true);
     asyncStates = createStateAccessors(defaultAsyncState, false);
-    syncStates.rawValueAccessor.$async = asyncStates.rawValueAccessor;
-    syncStates.valueAccessor.$async = asyncStates.valueAccessor;
-    syncStates.loadableAccessor.$async = asyncStates.loadableAccessor;
+    syncStates.rawValueAccessor.$async = asyncStates.rawValueAccessorFn;
+    syncStates.valueAccessor.$async = asyncStates.valueAccessorFn;
+    syncStates.loadableAccessor.$async = asyncStates.loadableAccessorFn;
   }
 
   function dispatch(action, payload, parentTask) {
@@ -129,12 +129,13 @@ export default function createStore(
         typeof $async === "object"
           ? $async
           : $async(
-              asyncStates.loadableAccessor,
+              asyncStates.loadableAccessorFn,
               payload,
               syncStates.rawValueAccessor
             );
       Object.entries(modifiedAsyncStates).forEach(([prop, value]) => {
-        if (typeof value === "undefined") {
+        // remove async state
+        if (typeof value === "undefined" || value === null) {
           asyncStates.unset(prop);
         } else {
           asyncStates.set(prop, value);
@@ -246,7 +247,7 @@ export default function createStore(
 
   function select(selector) {
     if (loading) throw loadPromise;
-    return storeHook(hookContext, selector);
+    return storeHook(hookContext, store, selector);
   }
 
   const store = createObject(

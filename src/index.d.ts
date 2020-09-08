@@ -103,7 +103,7 @@ export type StoreLoadableExtraProps<T> = {
       ? Selector<Loadable<TResult>>
       : never;
   };
-  $async: { [key: string]: Loadable<any> };
+  $async(key: string, defaultValue?: any): Loadable<any>;
 };
 
 export type StateLoadableInfer<T> = StoreLoadableExtraProps<T> &
@@ -112,7 +112,7 @@ export type StateLoadableInfer<T> = StoreLoadableExtraProps<T> &
 export type Reducer<TState, TValue, TPayload = any> = (
   value: TValue,
   payload: TPayload,
-  state: TState
+  state: StoreStateInfer<TState>
 ) => TValue;
 
 export type Dispatcher<TState> = {
@@ -128,14 +128,15 @@ export type MutationInfer<TState> =
       $payload: PayloadNormalizer<TState>;
     }
   | {
-      $async: { [key: string]: Promise<any> };
+      $async:
+        | AsyncReducer<TState>
+        | { [key: string]: Promise<any> | undefined | null | any };
     }
-  | { $async: AsyncReducer<TState> }
   | {
       [key in keyof TState]?: Reducer<TState, TState[key]>;
     };
 
-export type Mutation<T> = MutationInfer<StoreStateInfer<T>>;
+export type Mutation<T> = MutationInfer<T>;
 
 export type Action<TState = any> = Mutation<TState> | Effect<TState, any>;
 
@@ -202,7 +203,7 @@ export type StoreStateExtraProps<T> = {
       ? Selector<TResult>
       : never;
   };
-  $async: AsyncState;
+  $async(key: string, defaultValue?: any): any;
 };
 
 export interface AsyncState {
@@ -210,7 +211,7 @@ export interface AsyncState {
 }
 
 export type AsyncReducer<TState, TPayload = any> = (
-  loadable: { [key: string]: Loadable<any> },
+  loadable: (key: string) => Loadable<any>,
   payload?: TPayload,
   state: TState
 ) => AsyncState;

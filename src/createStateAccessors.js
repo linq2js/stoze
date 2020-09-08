@@ -28,11 +28,21 @@ export default function createStateAccessors(defaultState, mutable) {
     // is selector
     if (typeof value === "function") {
       const selector = value;
+
+      function selectorWrapper() {
+        try {
+          selector.__ignoreInputArgsChecking = true;
+          return selector(...arguments);
+        } finally {
+          delete selector.__ignoreInputArgsChecking;
+        }
+      }
+
       function valueWrapper() {
-        return selector(valueAccessor, ...arguments);
+        return selectorWrapper(valueAccessor, ...arguments);
       }
       function rawValueWrapper() {
-        return selector(rawValueAccessor, ...arguments);
+        return selectorWrapper(rawValueAccessor, ...arguments);
       }
       let loadable;
       function loadableWrapper() {
@@ -118,8 +128,24 @@ export default function createStateAccessors(defaultState, mutable) {
   return {
     stateObjects,
     valueAccessor,
+    valueAccessorFn(key, defaultValue) {
+      const value = valueAccessor[key];
+      return typeof value === "undefined" ? defaultValue : value;
+    },
     loadableAccessor,
+    loadableAccessorFn(key, defaultValue) {
+      const value = loadableAccessor[key];
+      if (!value)
+        return typeof defaultValue === "undefined"
+          ? undefinedLoadable
+          : createLoadable("hasValue", defaultValue);
+      return value;
+    },
     rawValueAccessor,
+    rawValueAccessorFn(key, defaultValue) {
+      const value = rawValueAccessor[key];
+      return typeof value === "undefined" ? defaultValue : value;
+    },
     set,
     unset,
   };

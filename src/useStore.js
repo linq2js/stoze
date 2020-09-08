@@ -1,22 +1,25 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useLayoutEffect } from "react";
 import isEqual from "./isEqual";
 import isPromiseLike from "./isPromiseLike";
 
 export default function useStore(
   { onChange, getState, getSelectorArgs },
+  store,
   selector
 ) {
   const data = useRef({}).current;
   data.selector = selector;
-  data.rerender = useState()[1];
+  data.rerender = useState(undefined)[1];
 
-  if (!data.handleChange) {
+  if (!data.handleChange || data.store !== store) {
+    data.store = store;
+    delete data.error;
     data.handleChange = () => {
       if (data.unmount) return;
       data.error = undefined;
       try {
         if (selector) {
-          const next = selector(...getSelectorArgs());
+          const next = selector ? selector(...getSelectorArgs()) : getState();
           if (isEqual(next, data.prev)) return;
         }
       } catch (e) {
@@ -30,8 +33,8 @@ export default function useStore(
   }
 
   useEffect(() => () => void (data.unmount = true), [data]);
-  useEffect(() => {
-    data.handleChange();
+  useLayoutEffect(() => {
+    // data.handleChange();
     return onChange(data.handleChange);
   }, [data, onChange]);
 
