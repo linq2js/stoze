@@ -257,3 +257,24 @@ test("pipe([promiseFactory, callback])", async () => {
   await delay(5);
   expect(callback).toBeCalledTimes(1);
 });
+
+test("init state lazily", async () => {
+  const store = stoze(
+    {
+      count: 0,
+    },
+    {
+      async init(setState) {
+        await delay(10);
+        setState({ count: 1 });
+      },
+    }
+  );
+
+  expect(store.state.count).toBe(0);
+  expect(store.loading).toBeTruthy();
+  expect(() => store.select()).toThrowError(Promise);
+  await delay(15);
+  expect(store.state.count).toBe(1);
+  expect(store.loading).toBeFalsy();
+});

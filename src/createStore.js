@@ -13,21 +13,31 @@ import watch from "./watch";
 export const doneTask = createTask((callback) => callback(undefined));
 
 export default function createStore(
-  { $async: defaultAsyncState = {}, ...defaultState } = {},
-  { init } = {}
+  defaultState = {},
+  { init, onChange: onChangeListener, onDispatch: onDispatchListener } = {}
 ) {
   const emitter = createEmitter();
   const onDispatch = emitter.get("dispatch").on;
   const onChange = emitter.get("change").on;
-  const syncStates = createStateAccessors(defaultState, true);
-  const asyncStates = createStateAccessors(defaultAsyncState, false);
   const taskMap = new WeakMap();
   const hookContext = { onChange, getSelectorArgs, getState };
-  let currentState = defaultState;
+  let syncStates;
+  let asyncStates;
+  let loading = true;
+  let currentState;
+  let loadPromise;
 
-  syncStates.rawValueAccessor.$async = asyncStates.rawValueAccessor;
-  syncStates.valueAccessor.$async = asyncStates.valueAccessor;
-  syncStates.loadableAccessor.$async = asyncStates.loadableAccessor;
+  function initState({
+    $async: defaultAsyncState = {},
+    ...defaultSyncState
+  } = {}) {
+    currentState = defaultSyncState;
+    syncStates = createStateAccessors(defaultSyncState, true);
+    asyncStates = createStateAccessors(defaultAsyncState, false);
+    syncStates.rawValueAccessor.$async = asyncStates.rawValueAccessor;
+    syncStates.valueAccessor.$async = asyncStates.valueAccessor;
+    syncStates.loadableAccessor.$async = asyncStates.loadableAccessor;
+  }
 
   function dispatch(action, payload, parentTask) {
     // remove if it is not task
@@ -126,14 +136,8 @@ export default function createStore(
       Object.entries(modifiedAsyncStates).forEach(([prop, value]) => {
         if (typeof value === "undefined") {
           asyncStates.unset(prop);
-        } else if (isPromiseLike(value)) {
-          asyncStates.set(prop, value);
-        } else if (Array.isArray(value)) {
-          asyncStates.set(prop, (update) => update(...value));
         } else {
-          throw new Error(
-            "Invalid async state value. It must be promise object"
-          );
+          asyncStates.set(prop, value);
         }
         dispatchContext.hasChange = true;
       });
@@ -241,6 +245,7 @@ export default function createStore(
   }
 
   function select(selector) {
+    if (loading) throw loadPromise;
     return storeHook(hookContext, selector);
   }
 
@@ -253,6 +258,9 @@ export default function createStore(
       get loadable() {
         return syncStates.loadableAccessor;
       },
+      get loading() {
+        return loading;
+      },
       onChange,
       onDispatch,
       dispatch(action, payload) {
@@ -262,7 +270,35 @@ export default function createStore(
     }
   );
 
-  init && dispatch(init);
+  initState(defaultState);
+  onChangeListener && onChange(onChangeListener);
+  onDispatchListener && onDispatch(onDispatchListener);
+
+  if (init) {
+    loadPromise = new Promise((resolve) => {
+      let stateInitialized = false;
+      const initTask = dispatch(
+        init,
+        // passing state initializer to init action
+        () => (state) => {
+          if (stateInitialized) {
+            throw new Error("State is already initialized");
+          }
+          stateInitialized = true;
+          initState({
+            ...currentState,
+            ...state,
+          });
+        }
+      );
+      initTask.onDone(() => {
+        loading = false;
+        resolve();
+      });
+    });
+  } else {
+    loading = false;
+  }
 
   return store;
 }

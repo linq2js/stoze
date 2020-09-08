@@ -13,7 +13,7 @@ export type StoreInfer<T> = Store<T>;
 export type Selector<T> = (...args: any[]) => T;
 
 export interface Store<T> extends StoreBase<T> {
-  loadable: StateLoadableInfer<T>;
+  readonly loadable: StateLoadableInfer<T>;
   select<TResult>(
     selector?: (
       state: StoreStateInfer<T>,
@@ -23,15 +23,20 @@ export interface Store<T> extends StoreBase<T> {
 }
 
 export interface StoreBase<T> {
-  state: StoreStateInfer<T>;
+  readonly state: StoreStateInfer<T>;
+  readonly loading: boolean;
   dispatch: Dispatcher<T>;
   onDispatch(listener: DispatchListener<T>): RemoveListener;
   onChange(listener: ChangeListener<T>): RemoveListener;
 }
 
 export interface StoreOptions<TState> {
-  init?: Effect<TState, any>;
+  init?: Effect<TState, StateUpdater<TState>>;
+  onDispatch: DispatchListener<TState>;
+  onChange: ChangeListener<TState>;
 }
+
+export type StateUpdater<TState> = (state: TState) => void;
 
 export interface EffectContext<TState = any> {
   state: StoreStateInfer<TState>;
