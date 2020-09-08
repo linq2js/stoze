@@ -18,15 +18,26 @@ const store = stoze<State>({
   },
 });
 
+const Increase2: Mutation<State> = {
+  $async: { name: Promise.reject() }
+}
+
 const Increase: Mutation<State> = {
+  $payload(payload): number {
+    return 100
+  },
+  $async(value, payload, state) {
+
+    return {};
+  },
   count: (value, payload, state) => {
-    state.$.select(11);
+    state.$select.select(11);
     return value + 1 + state.select;
   },
 };
 
 const IncreaseAsync = (by = 1, { dispatch, state }: EffectContext<State>) => {
-  state.$.select(1, 2, state.select);
+  state.$select.select(1, 2, state.select);
   dispatch(Increase);
 };
 
@@ -58,11 +69,14 @@ store.dispatch(IncreaseAsync, 2);
 store.select((state, loadable) => {
   return {
     p1: state.select,
-    p2: state.$.select(),
+    p2: state.$select.select(),
     p4: loadable.select,
-    p3: loadable.$.select(1, 2),
-    p6: store.state.$.select(1, 2),
+    p3: loadable.$select.select(1, 2),
+    p6: store.state.$select.select(1, 2),
     p7: store.state.select,
+    p8: store.loadable.$async.any.error,
+    p9: store.state.$async.any1,
+    p10: loadable.$async.aaa.state
   };
 });
 store.dispatch(Search, "aaa");

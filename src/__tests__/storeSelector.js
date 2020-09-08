@@ -8,6 +8,6 @@ test("call selector outside store", () => {
   });
 
   expect(store.state.data).toBe(1);
-  expect(store.state.$.data()).toBe(1);
-  expect(store.state.$.data(2)).toBe(2);
+  expect(store.state.$select.data()).toBe(1);
+  expect(store.state.$select.data(2)).toBe(2);
 });

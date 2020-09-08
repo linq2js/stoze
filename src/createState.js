@@ -2,11 +2,11 @@ import createLoadable from "./createLoadable";
 import createObject from "./createObject";
 import isPromiseLike from "./isPromiseLike";
 
-export default function createState(defaultValue, options = {}) {
+export default function createState(value, options = {}) {
   const { mutable = false } = options;
   const props = {
     state: "hasValue",
-    value: undefined,
+    value: options.defaultValue,
     lock: undefined,
     error: undefined,
     loadable: undefined,
@@ -110,7 +110,10 @@ export default function createState(defaultValue, options = {}) {
       },
       update(value, reducer) {
         if (!mutable) {
-          return createState((update) => update(...arguments), options);
+          return createState((update) => update(...arguments), {
+            ...options,
+            defaultValue: props.value,
+          });
         }
         return update(value, reducer);
       },
@@ -119,7 +122,7 @@ export default function createState(defaultValue, options = {}) {
         return startUpdating(...arguments);
       },
       cancelUpdating(lock) {
-        if (!mutable) return;
+        checkMutable();
         if (props.lock !== lock || props.state !== "loading") return false;
         props.lock = undefined;
         props.state = "hasValue";
@@ -133,15 +136,15 @@ export default function createState(defaultValue, options = {}) {
     }
   );
 
-  if (typeof defaultValue === "function") {
-    defaultValue(function () {
+  if (typeof value === "function") {
+    value(function () {
       if (!initializing) {
         throw new Error("State is already initialized");
       }
       return update(...arguments);
     });
   } else {
-    update(defaultValue);
+    update(value);
   }
   initializing = false;
 

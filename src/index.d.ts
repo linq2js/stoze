@@ -3,9 +3,9 @@ export default stoze;
 
 export interface DefaultExport extends Function {
   <T = any>(defaultState?: T, options?: StoreOptions<T>): StoreInfer<T>;
-  state<T = any>(defaultValue?: T): State<T>;
   selector<T>(selectors: Function[], combiner: (...args) => T): Selector<T>;
-  asyncQueue(promise): AsyncQueue;
+  // state<T = any>(value?: T): State<T>;
+  // asyncQueue(promise): AsyncQueue;
 }
 
 export type StoreInfer<T> = Store<T>;
@@ -92,15 +92,16 @@ export type StoreLoadable<T> = {
     : Loadable<T[key]>;
 };
 
-export type StoreLoadableSelectors<T> = {
-  $: {
+export type StoreLoadableExtraProps<T> = {
+  $select: {
     [key in keyof T]: T[key] extends Selector<infer TResult>
       ? Selector<Loadable<TResult>>
       : never;
   };
+  $async: { [key: string]: Loadable<any> };
 };
 
-export type StateLoadableInfer<T> = StoreLoadableSelectors<T> &
+export type StateLoadableInfer<T> = StoreLoadableExtraProps<T> &
   StoreLoadable<T>;
 
 export type Reducer<TState, TValue, TPayload = any> = (
@@ -118,14 +119,25 @@ export type Dispatcher<TState> = {
 };
 
 export type MutationInfer<TState> =
-  | { [key in keyof TState]?: Reducer<TState, TState[key]> }
-  | { $: PayloadNormalizer<TState> };
+  | {
+      $payload: PayloadNormalizer<TState>;
+    }
+  | {
+      $async: { [key: string]: Promise<any> };
+    }
+  | { $async: AsyncReducer<TState> }
+  | {
+      [key in keyof TState]?: Reducer<TState, TState[key]>;
+    };
 
 export type Mutation<T> = MutationInfer<StoreStateInfer<T>>;
 
 export type Action<TState = any> = Mutation<TState> | Effect<TState, any>;
 
-export type PayloadNormalizer<T> = (payload: any, state: T) => any;
+export type PayloadNormalizer<TState, TPayload = any> = (
+  payload?: TPayload,
+  state?: TState
+) => any;
 
 export type Effect<TState, TPayload> =
   | ((payload: TPayload, context: EffectContext<TState>) => any)
@@ -179,12 +191,23 @@ export type StoreState<T> = {
   [key in keyof T]: T[key] extends Selector<infer TResult> ? TResult : T[key];
 };
 
-export type StoreStateSelectors<T> = {
-  $: {
+export type StoreStateExtraProps<T> = {
+  $select: {
     [key in keyof T]: T[key] extends Selector<infer TResult>
       ? Selector<TResult>
       : never;
   };
+  $async: AsyncState;
 };
 
-export type StoreStateInfer<T> = StoreStateSelectors<T> & StoreState<T>;
+export interface AsyncState {
+  [key: string]: any;
+}
+
+export type AsyncReducer<TState, TPayload = any> = (
+  loadable: { [key: string]: Loadable<any> },
+  payload?: TPayload,
+  state: TState
+) => AsyncState;
+
+export type StoreStateInfer<T> = StoreStateExtraProps<T> & StoreState<T>;

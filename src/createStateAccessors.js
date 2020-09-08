@@ -1,0 +1,126 @@
+import createLoadable from "./createLoadable";
+import createState from "./createState";
+import isPromiseLike from "./isPromiseLike";
+
+const undefinedLoadable = createLoadable("hasValue", undefined);
+
+export default function createStateAccessors(defaultState, mutable) {
+  const stateObjects = {};
+  const rawValueAccessor = {};
+  const valueAccessor = {};
+  const loadableAccessor = {};
+
+  Object.defineProperty(rawValueAccessor, "$select", {
+    value: {},
+    enumerable: false,
+  });
+  Object.defineProperty(valueAccessor, "$select", {
+    value: {},
+    enumerable: false,
+  });
+  Object.defineProperty(loadableAccessor, "$select", {
+    value: {},
+    enumerable: false,
+  });
+
+  Object.keys(defaultState).forEach((prop) => {
+    const value = defaultState[prop];
+    // is selector
+    if (typeof value === "function") {
+      const selector = value;
+      function valueWrapper() {
+        return selector(valueAccessor, ...arguments);
+      }
+      function rawValueWrapper() {
+        return selector(rawValueAccessor, ...arguments);
+      }
+      let loadable;
+      function loadableWrapper() {
+        let args;
+        try {
+          args = {
+            value: valueWrapper(...arguments),
+            state: "hasValue",
+          };
+        } catch (e) {
+          if (isPromiseLike(e)) {
+            args = {
+              state: "loading",
+            };
+          } else {
+            args = {
+              state: "hasError",
+              error: e,
+            };
+          }
+        }
+        if (
+          !loadable ||
+          loadable.state !== args.state ||
+          loadable.value !== args.value ||
+          loadable.error !== args.error
+        ) {
+          loadable = createLoadable(args.state, args.value, args.error);
+        }
+      }
+
+      rawValueAccessor.$select[prop] = rawValueWrapper;
+      valueAccessor.$select[prop] = valueWrapper;
+      loadableAccessor.$select[prop] = loadableWrapper;
+
+      Object.defineProperty(rawValueAccessor, prop, {
+        get: rawValueWrapper,
+      });
+      Object.defineProperty(valueAccessor, prop, {
+        get: valueWrapper,
+      });
+      Object.defineProperty(loadableAccessor, prop, {
+        get: loadableWrapper,
+      });
+      return;
+    }
+    set(prop, value);
+  });
+
+  function unset(prop) {
+    stateObjects[prop] = undefined;
+  }
+
+  function set(prop, value) {
+    const isNew = !(prop in stateObjects);
+    stateObjects[prop] = mutable
+      ? createState(value, { mutable: true })
+      : (stateObjects[prop] || createState(value, { mutable: false })).update(
+          value
+        );
+    // only define new prop if the prop is not exist in stateObjects
+    if (isNew) {
+      Object.defineProperty(rawValueAccessor, prop, {
+        get() {
+          return stateObjects[prop] && stateObjects[prop].rawValue;
+        },
+      });
+      Object.defineProperty(valueAccessor, prop, {
+        get() {
+          return stateObjects[prop] && stateObjects[prop].value;
+        },
+      });
+      Object.defineProperty(loadableAccessor, prop, {
+        get() {
+          return stateObjects[prop]
+            ? stateObjects[prop].loadable
+            : undefinedLoadable;
+        },
+      });
+    }
+  }
+
+  return {
+    stateObjects,
+    valueAccessor,
+    loadableAccessor,
+    rawValueAccessor,
+    set,
+    unset,
+  };
+}

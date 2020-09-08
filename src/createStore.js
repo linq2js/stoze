@@ -1,7 +1,6 @@
-import createLoadable from "./createLoadable";
 import createObject from "./createObject";
 import createEmitter from "./createEmitter";
-import createState from "./createState";
+import createStateAccessors from "./createStateAccessors";
 import is from "./is";
 import createTask from "./createTask";
 import isEqual from "./isEqual";
@@ -13,104 +12,22 @@ import watch from "./watch";
 
 export const doneTask = createTask((callback) => callback(undefined));
 
-export default function createStore(defaultState = {}, { init } = {}) {
+export default function createStore(
+  { $async: defaultAsyncState = {}, ...defaultState } = {},
+  { init } = {}
+) {
   const emitter = createEmitter();
   const onDispatch = emitter.get("dispatch").on;
   const onChange = emitter.get("change").on;
-  const stateProps = Object.keys(defaultState);
-  const stateObjects = {};
-  const rawValueAccessor = {};
-  const valueAccessor = {};
-  const loadableAccessor = {};
+  const syncStates = createStateAccessors(defaultState, true);
+  const asyncStates = createStateAccessors(defaultAsyncState, false);
   const taskMap = new WeakMap();
   const hookContext = { onChange, getSelectorArgs, getState };
   let currentState = defaultState;
 
-  Object.defineProperty(rawValueAccessor, "$", {
-    value: {},
-    enumerable: false,
-  });
-  Object.defineProperty(valueAccessor, "$", { value: {}, enumerable: false });
-  Object.defineProperty(loadableAccessor, "$", {
-    value: {},
-    enumerable: false,
-  });
-
-  stateProps.forEach((prop) => {
-    const value = defaultState[prop];
-    // is selector
-    if (typeof value === "function") {
-      const selector = value;
-      function valueWrapper() {
-        return selector(valueAccessor, ...arguments);
-      }
-      function rawValueWrapper() {
-        return selector(rawValueAccessor, ...arguments);
-      }
-      let loadable;
-      function loadableWrapper() {
-        let args;
-        try {
-          args = {
-            value: valueWrapper(...arguments),
-            state: "hasValue",
-          };
-        } catch (e) {
-          if (isPromiseLike(e)) {
-            args = {
-              state: "loading",
-            };
-          } else {
-            args = {
-              state: "hasError",
-              error: e,
-            };
-          }
-        }
-        if (
-          !loadable ||
-          loadable.state !== args.state ||
-          loadable.value !== args.value ||
-          loadable.error !== args.error
-        ) {
-          loadable = createLoadable(args.state, args.value, args.error);
-        }
-      }
-
-      rawValueAccessor.$[prop] = rawValueWrapper;
-      valueAccessor.$[prop] = valueWrapper;
-      loadableAccessor.$[prop] = loadableWrapper;
-
-      Object.defineProperty(rawValueAccessor, prop, {
-        get: rawValueWrapper,
-      });
-      Object.defineProperty(valueAccessor, prop, {
-        get: valueWrapper,
-      });
-      Object.defineProperty(loadableAccessor, prop, {
-        get: loadableWrapper,
-      });
-      return;
-    }
-
-    const stateObject = createState(value, { mutable: true });
-    stateObjects[prop] = stateObject;
-    Object.defineProperty(rawValueAccessor, prop, {
-      get() {
-        return stateObject.rawValue;
-      },
-    });
-    Object.defineProperty(valueAccessor, prop, {
-      get() {
-        return stateObject.value;
-      },
-    });
-    Object.defineProperty(loadableAccessor, prop, {
-      get() {
-        return stateObject.loadable;
-      },
-    });
-  });
+  syncStates.rawValueAccessor.$async = asyncStates.rawValueAccessor;
+  syncStates.valueAccessor.$async = asyncStates.valueAccessor;
+  syncStates.loadableAccessor.$async = asyncStates.loadableAccessor;
 
   function dispatch(action, payload, parentTask) {
     // remove if it is not task
@@ -119,7 +36,7 @@ export default function createStore(defaultState = {}, { init } = {}) {
     }
 
     if (typeof payload === "function") {
-      payload = payload(rawValueAccessor);
+      payload = payload(syncStates.rawValueAccessor);
     }
 
     const dispatchContext = {
@@ -151,11 +68,11 @@ export default function createStore(defaultState = {}, { init } = {}) {
   }
 
   function notifyChange() {
-    const nextState = { ...rawValueAccessor };
+    const nextState = { ...syncStates.rawValueAccessor };
     if (!isEqual(currentState, nextState)) {
       currentState = nextState;
     }
-    emitter.emit("change", { store, state: rawValueAccessor });
+    emitter.emit("change", { store, state: syncStates.rawValueAccessor });
   }
 
   function dispatchEffect(effect, payload, { parentTask }) {
@@ -170,7 +87,7 @@ export default function createStore(defaultState = {}, { init } = {}) {
       const result = effect(
         payload,
         createEffectContext(currentTask, {
-          state: rawValueAccessor,
+          state: syncStates.rawValueAccessor,
           lastTask,
           onDispatch,
           dispatch(action, payload) {
@@ -187,10 +104,43 @@ export default function createStore(defaultState = {}, { init } = {}) {
     });
   }
 
-  function applyMutation({ $, $name, ...mutation }, payload, dispatchContext) {
-    if ($) payload = $(payload, rawValueAccessor);
+  function applyMutation(
+    { $payload, $async, $name, ...mutation },
+    payload,
+    dispatchContext
+  ) {
+    if ($payload) {
+      payload = $payload(payload, syncStates.rawValueAccessor);
+    }
+
+    // async reducer
+    if ($async) {
+      const modifiedAsyncStates =
+        typeof $async === "object"
+          ? $async
+          : $async(
+              asyncStates.loadableAccessor,
+              payload,
+              syncStates.rawValueAccessor
+            );
+      Object.entries(modifiedAsyncStates).forEach(([prop, value]) => {
+        if (typeof value === "undefined") {
+          asyncStates.unset(prop);
+        } else if (isPromiseLike(value)) {
+          asyncStates.set(prop, value);
+        } else if (Array.isArray(value)) {
+          asyncStates.set(prop, (update) => update(...value));
+        } else {
+          throw new Error(
+            "Invalid async state value. It must be promise object"
+          );
+        }
+        dispatchContext.hasChange = true;
+      });
+    }
+
     const entries = Object.entries(mutation).map(([key, reducer]) => {
-      const stateObject = stateObjects[key];
+      const stateObject = syncStates.stateObjects[key];
       if (!stateObject) {
         throw new Error("Invalid mutation. State does not exist: " + key);
       }
@@ -232,7 +182,11 @@ export default function createStore(defaultState = {}, { init } = {}) {
             const currentValue = stateObject.rawValue;
             const nextValue =
               typeof reducerOrValue === "function"
-                ? reducerOrValue(currentValue, result, rawValueAccessor)
+                ? reducerOrValue(
+                    currentValue,
+                    result,
+                    syncStates.rawValueAccessor
+                  )
                 : reducerOrValue;
             changed = stateObject.endUpdating(lock, nextValue);
           }
@@ -269,7 +223,7 @@ export default function createStore(defaultState = {}, { init } = {}) {
       const currentValue = stateObject.rawValue;
       const nextValue =
         typeof reducerOrValue === "function"
-          ? reducerOrValue(currentValue, payload, rawValueAccessor)
+          ? reducerOrValue(currentValue, payload, syncStates.rawValueAccessor)
           : reducerOrValue;
       if (nextValue !== currentValue) {
         dispatchContext.hasChange = true;
@@ -279,11 +233,11 @@ export default function createStore(defaultState = {}, { init } = {}) {
   }
 
   function getSelectorArgs() {
-    return [valueAccessor, loadableAccessor];
+    return [syncStates.valueAccessor, syncStates.loadableAccessor];
   }
 
   function getState() {
-    return valueAccessor;
+    return syncStates.valueAccessor;
   }
 
   function select(selector) {
@@ -294,10 +248,10 @@ export default function createStore(defaultState = {}, { init } = {}) {
     { store: true },
     {
       get state() {
-        return rawValueAccessor;
+        return syncStates.rawValueAccessor;
       },
       get loadable() {
-        return loadableAccessor;
+        return syncStates.loadableAccessor;
       },
       onChange,
       onDispatch,
