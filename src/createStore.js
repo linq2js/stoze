@@ -122,11 +122,13 @@ export default function createStore(defaultState = {}, options = {}) {
     });
   }
 
-  function applyMutation(
-    { $payload, $async, $name, ...mutation },
-    payload,
-    dispatchContext
-  ) {
+  function applyMutation(originalMutation, payload, dispatchContext) {
+    if (!originalMutation.$name) {
+      // generate temp name for mutation
+      originalMutation.$name = "@@mutation_" + Math.random().toString(16);
+    }
+
+    const { $payload, $async, $name, ...mutation } = originalMutation;
     if ($payload) {
       payload = $payload(payload, syncStates.rawValueAccessor);
     }
