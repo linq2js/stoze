@@ -13,9 +13,8 @@ export function registerStore(name, store) {
 export function onStoreUpdate(name, handler) {
   const names = Array.isArray(name) ? name : [name];
   emitter.on("storeUpdate", (args) => {
-    if (!names.includes(args.name)) {
-      return;
+    if (names[0] === "*" || names.includes(args.name)) {
+      handler(args);
     }
-    handler(args);
   });
 }

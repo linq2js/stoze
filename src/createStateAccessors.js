@@ -106,6 +106,7 @@ export default function createStateAccessors(state, mutable) {
 
   function getPropName(prop) {
     if (Array.isArray(prop)) {
+      if (prop.length === 1 && typeof prop[0] !== "object") return prop[0];
       return propNames.getOrAdd(prop, () => {
         return "#prop_" + propId++;
       });

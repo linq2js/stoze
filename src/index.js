@@ -1,15 +1,13 @@
-// import createAsyncQueue from "./createAsyncQueue";
 import * as dev from "./DEV";
-import stoze from "./createStore";
-// import createState from "./createState";
-import createSelector from "./createSelector";
+import injectExtensions from "./injectExtensions";
+import storeHook from "./useStore";
+import createStore from "./createStore";
 
 export const DEV = dev;
 
-Object.assign(stoze, {
-  selector: createSelector,
-  // state: createState,
-  // asyncQueue: createAsyncQueue,
+export default injectExtensions(function stoze(state, options) {
+  return createStore(state, {
+    ...options,
+    storeHook,
+  });
 });
-
-export default stoze;

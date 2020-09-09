@@ -7,7 +7,6 @@ import isEqual from "./isEqual";
 import isPromiseLike from "./isPromiseLike";
 import createEffectContext from "./createEffectContext";
 import { noop } from "./types";
-import storeHook from "./useStore";
 import watch from "./watch";
 
 export const doneTask = createTask((callback) => callback(undefined));
@@ -18,6 +17,7 @@ export default function createStore(defaultState = {}, options = {}) {
     onChange: onChangeListener,
     onDispatch: onDispatchListener,
     onError: onErrorListener,
+    storeHook,
   } = options;
 
   const emitter = createEmitter();
@@ -290,7 +290,7 @@ export default function createStore(defaultState = {}, options = {}) {
       dispatch(action, payload) {
         return dispatch(action, payload);
       },
-      select,
+      select: storeHook ? select : noop,
     }
   );
 

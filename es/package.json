@@ -1,0 +1,6 @@
+{
+  "internal": true,
+  "main": "../dist/esmodule.js",
+  "module": "../dist/esmodule.js",
+  "types": "../src/index.d.ts"
+}

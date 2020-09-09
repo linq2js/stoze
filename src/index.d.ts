@@ -3,10 +3,25 @@ declare const DEV: DevExports;
 export default stoze;
 
 export interface DefaultExport extends Function {
-  <T = any>(defaultState?: T, options?: StoreOptions<T>): StoreInfer<T>;
+  <TState = any>(
+    defaultState?: TState,
+    options?: StoreOptions<TState>
+  ): StoreInfer<TState>;
   selector<T>(selectors: Function[], combiner: (...args) => T): Selector<T>;
-  // state<T = any>(value?: T): State<T>;
-  // asyncQueue(promise): AsyncQueue;
+  entities<TEntity, TId extends string | number>(
+    initial?: TEntity[],
+    options?: { selectId?(entity: TEntity): TId }
+  ): Entities<TEntity, TId>;
+}
+
+export interface Entities<TEntity, TId> {
+  get(): TEntity[];
+  ids: TId[];
+  entities: { [key: TId]: TEntity };
+  add(entity: TEntity): Entities<TEntity, TId>;
+  add(entities: TEntity[]): Entities<TEntity, TId>;
+  remove(id: TId);
+  remove(ids: TId[]);
 }
 
 export interface DevExports {
