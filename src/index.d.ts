@@ -37,6 +37,7 @@ export interface StoreBase<T> {
   dispatch: Dispatcher<T>;
   onDispatch(listener: DispatchListener<T>): RemoveListener;
   onChange(listener: ChangeListener<T>): RemoveListener;
+  onError(listener: ErrorListener<T>): RemoveListener;
 }
 
 export interface StoreOptions<TState> {
@@ -179,6 +180,11 @@ export type ChangeListener<TState> = Listener<{
   store: Store<TState>;
   state: TState;
   mutation: Mutation<TState>;
+}>;
+
+export type ErrorListener<TState> = Listener<{
+  store: Store<TState>;
+  error: any;
 }>;
 
 export type RemoveListener = () => void;
