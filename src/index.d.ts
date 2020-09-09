@@ -1,4 +1,5 @@
 declare const stoze: DefaultExport;
+declare const DEV: DevExports;
 export default stoze;
 
 export interface DefaultExport extends Function {
@@ -6,6 +7,14 @@ export interface DefaultExport extends Function {
   selector<T>(selectors: Function[], combiner: (...args) => T): Selector<T>;
   // state<T = any>(value?: T): State<T>;
   // asyncQueue(promise): AsyncQueue;
+}
+
+export interface DevExports {
+  registerStore(name: string, store: Store<any>): void;
+  onStoreUpdate(
+    name: string | string[],
+    handler: (args: { name: string; next: Store<any>; prev: Store<any> }) => any
+  ): void;
 }
 
 export type StoreInfer<T> = Store<T>;

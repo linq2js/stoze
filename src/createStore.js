@@ -12,10 +12,14 @@ import watch from "./watch";
 
 export const doneTask = createTask((callback) => callback(undefined));
 
-export default function createStore(
-  defaultState = {},
-  { init, onChange: onChangeListener, onDispatch: onDispatchListener } = {}
-) {
+export default function createStore(defaultState = {}, options = {}) {
+  const {
+    init,
+    onChange: onChangeListener,
+    onDispatch: onDispatchListener,
+    onError: onErrorListener,
+  } = options;
+
   const emitter = createEmitter();
   const onDispatch = emitter.get("dispatch").on;
   const onChange = emitter.get("change").on;
@@ -66,8 +70,12 @@ export default function createStore(
             typeof action
         );
       }
+      const isTask = is(result).task;
+      if (isTask && onErrorListener) {
+        result.onError((error) => onErrorListener({ error, store }));
+      }
       emitter.emit("dispatch", { store, action: action, payload });
-      return is(result).task ? result : doneTask;
+      return isTask ? result : doneTask;
     } finally {
       if (dispatchContext.hasChange) {
         // reset hasChange flag, it might be changed by async updating latest
@@ -312,6 +320,12 @@ export default function createStore(
     });
   } else {
     loading = false;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    if (options.name) {
+      require("./DEV").registerStore(options.name, store);
+    }
   }
 
   return store;
