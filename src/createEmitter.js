@@ -7,9 +7,20 @@ export default function createEmitter() {
     if (event in all) {
       return all[event];
     }
-    const listeners = (all[event] = []);
+    let modifiedListeners;
+    let workingListeners = [];
     let lastPayload;
     let sealed = false;
+    let isEmitting = false;
+
+    function makeImmutableListeners() {
+      if (!isEmitting) return workingListeners;
+
+      if (!modifiedListeners) {
+        modifiedListeners = workingListeners.slice(0);
+      }
+      return modifiedListeners;
+    }
 
     function on(listener) {
       if (sealed) {
@@ -17,29 +28,55 @@ export default function createEmitter() {
         return noop;
       }
       let isActive = true;
-      listeners.push(listener);
+
+      makeImmutableListeners().push(listener);
 
       return () => {
         if (!isActive) {
           return;
         }
         isActive = false;
-        const index = listeners.indexOf(listener);
-        index !== -1 && listeners.splice(index, 1);
+        const immutableListeners = makeImmutableListeners();
+        const index = immutableListeners.indexOf(listener);
+        index !== -1 && immutableListeners.splice(index, 1);
       };
     }
 
+    function length() {
+      return getListeners().length;
+    }
+
+    function getListeners() {
+      return modifiedListeners || workingListeners;
+    }
+
     function notify(payload) {
-      listeners.slice(0).forEach((listener) => listener(payload));
+      try {
+        isEmitting = true;
+        // update listeners
+        if (modifiedListeners) {
+          workingListeners = modifiedListeners;
+        }
+        workingListeners.forEach((listener) => listener(payload));
+      } finally {
+        isEmitting = false;
+      }
     }
 
     function emit(payload) {
       if (sealed) return;
       notify(payload);
     }
+
     function clear() {
-      listeners.length = 0;
+      if (isEmitting) {
+        makeImmutableListeners().length = 0;
+      } else {
+        if (modifiedListeners) modifiedListeners.length = 0;
+        workingListeners.length = 0;
+      }
     }
+
     function once(listener) {
       const remove = on(function () {
         remove();
@@ -56,12 +93,13 @@ export default function createEmitter() {
       clear();
     }
 
-    return Object.assign(listeners, {
+    return (all[event] = {
       on,
       emit,
       emitOnce,
       clear,
-      once
+      once,
+      length,
     });
   }
 
@@ -82,7 +120,7 @@ export default function createEmitter() {
   }
 
   function has(event) {
-    return all[event] && all[event].length;
+    return all[event] && all[event].length();
   }
 
   return {
@@ -101,6 +139,6 @@ export default function createEmitter() {
         // clear all event listeners
         all = {};
       }
-    }
+    },
   };
 }
