@@ -34,7 +34,7 @@ export default function useStore(
 
   useEffect(() => () => void (data.unmount = true), [data]);
   useLayoutEffect(() => {
-    // data.handleChange();
+    data.handleChange();
     return onChange(data.handleChange);
   }, [data, onChange]);
 
