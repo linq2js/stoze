@@ -8,21 +8,34 @@ export interface DefaultExport extends Function {
     options?: StoreOptions<TState>
   ): StoreInfer<TState>;
   selector<T>(selectors: Function[], combiner: (...args) => T): Selector<T>;
-  entities<TEntity, TId extends string | number>(
+  entities<
+    TEntity,
+    TId extends string | number,
+    TSlice extends { [key: string]: (entity: TEntity) => any }
+  >(
     initial?: TEntity[],
-    options?: { selectId?(entity: TEntity): TId }
-  ): Entities<TEntity, TId>;
+    options?: { selectId?(entity: TEntity): TId; slice: TSlice }
+  ): Entities<TEntity, TId, TSlice>;
 }
 
-export interface Entities<TEntity, TId> {
+export interface Entities<TEntity, TId, TSlice> {
   get(): TEntity[];
   ids: TId[];
   entities: { [key: TId]: TEntity };
-  add(entity: TEntity): Entities<TEntity, TId>;
-  add(entities: TEntity[]): Entities<TEntity, TId>;
-  remove(id: TId);
-  remove(ids: TId[]);
+  add(entity: Partial<TEntity>): this;
+  add(entities: Partial<TEntity>[]): this;
+  remove(id: TId): this;
+  remove(ids: TId[]): this;
+  slice<TName extends keyof TSlice>(
+    name: TName
+  ): SliceResultInfer<TEntity, TSlice[TName]>;
 }
+
+export type SliceResultInfer<TEntity, TSelector> = TSelector extends (
+  entity?: TEntity
+) => infer TResult
+  ? TResult[]
+  : never;
 
 export interface DevExports {
   registerStore(name: string, store: Store<any>): void;

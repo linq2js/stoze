@@ -9,13 +9,31 @@ export default function createEntities(
   options = defaultOptions
 ) {
   const { selectId = defaultSelectId } = options;
-  return createEntitiesWrapper(initial, emptyIds, emptyEntities, {
+  return createEntitiesWrapper(emptyIds, emptyEntities, {
+    ...options,
     selectId,
-  }).reset();
+  }).add(initial);
 }
 
-function createEntitiesWrapper(initial, ids, entities, options, defaultValue) {
-  let value = defaultValue;
+function createEntitiesWrapper(ids, entities, options) {
+  const { slice = {} } = options;
+  let sliceCache = new WeakMap();
+  const slicers = Object.entries(slice).map((x) => x[1]);
+  let value;
+
+  if (options.__sliceCache) {
+    slicers.forEach((slicer) =>
+      sliceCache.set(slicer, options.__sliceCache.get(slicer))
+    );
+  }
+
+  function create(newIds, newEntities) {
+    return createEntitiesWrapper(newIds || ids, newEntities || entities, {
+      ...options,
+      __sliceCache: sliceCache,
+    });
+  }
+
   return {
     ids,
     entities,
@@ -34,13 +52,15 @@ function createEntitiesWrapper(initial, ids, entities, options, defaultValue) {
       let newIds;
       let newEntities;
 
+      const affectedSlicers = [];
+      let currentSlicers = slicers.slice();
+
       inputEntities.forEach((entity) => {
         if (typeof entity !== "object") {
           throw new Error(
             "Entity must be object type but got " + typeof entity
           );
         }
-
         const id = options.selectId(entity);
         if (typeof id !== "number" && typeof id !== "string") {
           throw new Error(
@@ -50,21 +70,41 @@ function createEntitiesWrapper(initial, ids, entities, options, defaultValue) {
         const current = (newEntities || entities)[id];
         const isNew = !current;
         if (current !== entity) {
+          if (isNew) {
+            // if new one to be added, all slicers are affected
+          } else {
+            const unaffectedSlicers = [];
+            while (currentSlicers.length) {
+              const slicer = currentSlicers.shift();
+              if (slicer(current) !== slicer(entity)) {
+                affectedSlicers.push(slicer);
+              } else {
+                unaffectedSlicers.push(slicer);
+              }
+            }
+            currentSlicers = unaffectedSlicers;
+          }
           if (!newEntities) newEntities = { ...entities };
           newEntities[id] = entity;
         }
         if (isNew) {
+          if (slice) {
+            // clear all cache
+            sliceCache = new WeakMap();
+          }
           if (!newIds) newIds = ids.slice();
           newIds.push(id);
+        } else {
+          // clear affected slicer cache
+          affectedSlicers.forEach((slicer) =>
+            sliceCache.set(slicer, undefined)
+          );
         }
       });
+      // nothing to change
+      if (!newIds && !newEntities) return this;
 
-      return createEntitiesWrapper(
-        initial,
-        newIds || ids,
-        newEntities || entities,
-        options
-      );
+      return create(newIds, newEntities);
     },
     remove(inputId) {
       const filter = Array.isArray(inputId)
@@ -82,27 +122,22 @@ function createEntitiesWrapper(initial, ids, entities, options, defaultValue) {
           newEntities[id] = entities[id];
         }
       });
-      return newIds
-        ? createEntitiesWrapper(initial, newIds, newEntities, options)
-        : this;
+      return newIds ? create(newIds, newEntities) : this;
     },
-    reset() {
-      const temp = createEntitiesWrapper(
-        initial,
-        emptyIds,
-        emptyEntities,
-        options
-      ).add(initial);
-      return createEntitiesWrapper(
-        initial,
-        temp.ids,
-        temp.entities,
-        options,
-        initial
-      );
+    slice(name) {
+      if (!slice || !(name in slice)) {
+        throw new Error("No slice named " + name);
+      }
+      const slicer = slice[name];
+      let value = sliceCache.get(slicer);
+      if (!value) {
+        value = this.get().map(slicer);
+        sliceCache.set(slicer, value);
+      }
+      return value;
     },
     clear() {
-      return createEntitiesWrapper(initial, emptyIds, emptyEntities, options);
+      return create(emptyIds, emptyEntities);
     },
   };
 }

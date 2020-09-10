@@ -85,3 +85,13 @@ store.select((state, loadable) => {
   };
 });
 store.dispatch(Search, "aaa");
+
+const entities = stoze.entities([{ id: 1, title: "hello", completed: false }], {
+  slice: {
+    completed(entity) {
+      return entity.completed;
+    },
+  },
+});
+const completedSlice = entities.add({ id: 2 }).slice('completed');
+console.log(completedSlice);
