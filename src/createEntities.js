@@ -126,6 +126,7 @@ function createEntitiesWrapper(ids, entities, options) {
         : (x) => x === inputId;
       let newIds;
       let newEntities;
+      let found = false;
       ids.forEach((id) => {
         if (!filter(id)) {
           if (!newIds) {
@@ -134,8 +135,12 @@ function createEntitiesWrapper(ids, entities, options) {
           }
           newIds.push(id);
           newEntities[id] = entities[id];
+        } else {
+          found = true;
         }
       });
+      // remove all
+      if (found && !newIds) return create(emptyIds, emptyEntities);
       return newIds ? create(newIds, newEntities) : this;
     },
     slice(name) {

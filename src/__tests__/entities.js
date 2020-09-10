@@ -25,6 +25,8 @@ test("remove()", () => {
   expect(createEntities(source).remove([1, 1]).entities).toEqual({
     2: source[1],
   });
+
+  expect(createEntities(source).remove([1, 2]).entities).toEqual({});
 });
 
 test("update() duplicate", () => {
