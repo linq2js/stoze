@@ -246,6 +246,13 @@ export default function createStore(defaultState = {}, options = {}) {
     });
   }
 
+  function addActions(actions) {
+    Object.entries(actions).forEach(([key, action]) => {
+      store[key] = (...args) => dispatch(action, ...args);
+    });
+    return store;
+  }
+
   function performSyncMutation(mutation, payload, dispatchContext) {
     mutation.forEach(([stateObject, reducerOrValue]) => {
       const currentValue = stateObject.rawValue;
@@ -291,6 +298,7 @@ export default function createStore(defaultState = {}, options = {}) {
         return dispatch(action, payload);
       },
       select: storeHook ? select : noop,
+      actions: addActions,
     }
   );
 

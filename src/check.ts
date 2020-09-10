@@ -85,7 +85,15 @@ store.select((state, loadable) => {
   };
 });
 store.dispatch(Search, "aaa");
+const store2 = store.actions({
+  increase: {
+    count(a) {
+      return 1;
+    },
+  },
+});
 
+store2.increase();
 const entities = stoze.entities([{ id: 1, title: "hello", completed: false }], {
   slice: {
     completed(entity) {
@@ -93,5 +101,5 @@ const entities = stoze.entities([{ id: 1, title: "hello", completed: false }], {
     },
   },
 });
-const completedSlice = entities.add({ id: 2 }).slice('completed');
+const completedSlice = entities.update({ id: 2 }).get("completed");
 console.log(completedSlice);

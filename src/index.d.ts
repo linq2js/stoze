@@ -3,10 +3,9 @@ declare const DEV: DevExports;
 export default stoze;
 
 export interface DefaultExport extends Function {
-  <TState = any>(
-    defaultState?: TState,
-    options?: StoreOptions<TState>
-  ): StoreInfer<TState>;
+  <TState = any>(defaultState?: TState, options?: StoreOptions<TState>): Store<
+    TState
+  >;
   selector<T>(selectors: Function[], combiner: (...args) => T): Selector<T>;
   entities<
     TEntity,
@@ -51,19 +50,25 @@ export interface DevExports {
   ): void;
 }
 
-export type StoreInfer<T> = Store<T>;
-
 export type Selector<T> = (...args: any[]) => T;
 
-export interface Store<T> extends StoreBase<T> {
-  readonly loadable: StateLoadableInfer<T>;
+export interface Store<TState> extends StoreBase<TState> {
+  readonly loadable: StateLoadableInfer<TState>;
   select<TResult>(
     selector?: (
-      state: StoreStateInfer<T>,
-      loadable?: StateLoadableInfer<T>
+      state: StoreStateInfer<TState>,
+      loadable?: StateLoadableInfer<TState>
     ) => TResult
   ): TResult;
+  actions<
+    TActions extends { [key: string]: Mutation<TState> | Effect<TState, any> }
+  >(
+    actions: TActions
+  ): StoreActionsInfer<this, TActions>;
 }
+
+export type StoreActionsInfer<TStore, TActions> = TStore &
+  { [key in keyof TActions]: (payload?: any) => Task };
 
 export interface StoreBase<T> {
   readonly state: StoreStateInfer<T>;
@@ -184,7 +189,7 @@ export type MutationInfer<TState> =
       [key in keyof TState]?: Reducer<TState, TState[key]>;
     };
 
-export type Mutation<T> = MutationInfer<T>;
+export type Mutation<TState> = MutationInfer<TState>;
 
 export type Action<TState = any> = Mutation<TState> | Effect<TState, any>;
 
