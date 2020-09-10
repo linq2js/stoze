@@ -1,3 +1,5 @@
+import isEqual from "./isEqual";
+
 const defaultSelectId = (item) => item.id;
 const defaultOptions = {};
 const defaultInitial = [];
@@ -8,11 +10,12 @@ export default function createEntities(
   initial = defaultInitial,
   options = defaultOptions
 ) {
-  const { selectId = defaultSelectId } = options;
+  const { selectId = defaultSelectId, equal = isEqual } = options;
   return createEntitiesWrapper(emptyIds, emptyEntities, {
     ...options,
     selectId,
-  }).add(initial);
+    equal,
+  }).update(initial);
 }
 
 function createEntitiesWrapper(ids, entities, options) {
@@ -22,9 +25,11 @@ function createEntitiesWrapper(ids, entities, options) {
   let value;
 
   if (options.__sliceCache) {
-    slicers.forEach((slicer) =>
-      sliceCache.set(slicer, options.__sliceCache.get(slicer))
-    );
+    slicers.forEach((slicer) => {
+      const value = options.__sliceCache.get(slicer);
+      if (!value) return;
+      sliceCache.set(slicer, value);
+    });
   }
 
   function create(newIds, newEntities) {
@@ -43,7 +48,7 @@ function createEntitiesWrapper(ids, entities, options) {
       }
       return value;
     },
-    add(inputEntity) {
+    update(inputEntity, merge) {
       const inputEntities = Array.isArray(inputEntity)
         ? inputEntity
         : [inputEntity];
@@ -61,6 +66,7 @@ function createEntitiesWrapper(ids, entities, options) {
             "Entity must be object type but got " + typeof entity
           );
         }
+
         const id = options.selectId(entity);
         if (typeof id !== "number" && typeof id !== "string") {
           throw new Error(
@@ -68,15 +74,20 @@ function createEntitiesWrapper(ids, entities, options) {
           );
         }
         const current = (newEntities || entities)[id];
+        if (merge) {
+          entity = { ...current, ...entity };
+        }
         const isNew = !current;
-        if (current !== entity) {
+        const equal = merge ? isEqual(entity, current) : current === entity;
+        if (!equal) {
           if (isNew) {
             // if new one to be added, all slicers are affected
           } else {
+            // find out affected slicers
             const unaffectedSlicers = [];
             while (currentSlicers.length) {
               const slicer = currentSlicers.shift();
-              if (slicer(current) !== slicer(entity)) {
+              if (!options.equal(slicer(current), slicer(entity))) {
                 affectedSlicers.push(slicer);
               } else {
                 unaffectedSlicers.push(slicer);

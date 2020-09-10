@@ -5,7 +5,7 @@ const source = [
   { id: 2, title: "item 2", completed: false },
 ];
 
-test("add()", () => {
+test("update()", () => {
   const data = createEntities(source);
   expect(data.ids).toEqual([1, 2]);
   expect(data.entities).toEqual({
@@ -27,9 +27,9 @@ test("remove()", () => {
   });
 });
 
-test("add() duplicate", () => {
+test("update() duplicate", () => {
   expect(
-    createEntities(source).add([
+    createEntities(source).update([
       { id: 1, title: "item 3" },
       { id: 1, title: "item 4" },
     ])
@@ -44,7 +44,7 @@ test("add() duplicate", () => {
 
 test("clear()", () => {
   const result = createEntities(source)
-    .add([
+    .update([
       { id: 1, title: "item 3" },
       { id: 1, title: "item 4" },
     ])
@@ -66,14 +66,36 @@ test("slice()", () => {
   expect(slice1).toBe(slice2);
 
   // try to change title
-  const result2 = result1.add({ id: 1, title: "new title", completed: true });
+  const result2 = result1.update({
+    id: 1,
+    title: "new title",
+    completed: true,
+  });
   const slice3 = result2.slice("completed");
   expect(slice3).toBe(slice1);
 
   // try to change completed
-  const result3 = result2.add({ id: 1, title: "new title", completed: false });
+  const result3 = result2.update({
+    id: 1,
+    title: "new title",
+    completed: false,
+  });
   const slice4 = result3.slice("completed");
   expect(slice4).toEqual([false, false]);
   // the change in result3 does not affect to result2's slices
   expect(result2.slice("completed")).toEqual([true, false]);
+});
+
+test("update() with merge flag", () => {
+  const result1 = createEntities(source);
+  const result2 = result1.update({ id: 1, completed: false }, true);
+  expect(result2.entities[1]).toEqual({
+    id: 1,
+    title: "item 1",
+    completed: false,
+  });
+
+  // merge without change
+  const result3 = result2.update({ id: 1, completed: false }, true);
+  expect(result3).toBe(result2);
 });

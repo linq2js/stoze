@@ -14,16 +14,22 @@ export interface DefaultExport extends Function {
     TSlice extends { [key: string]: (entity: TEntity) => any }
   >(
     initial?: TEntity[],
-    options?: { selectId?(entity: TEntity): TId; slice: TSlice }
+    options?: {
+      selectId?(entity: TEntity): TId;
+      slice?: TSlice;
+      equal?: EqualityComparer<any>;
+    }
   ): Entities<TEntity, TId, TSlice>;
 }
+
+export type EqualityComparer<T> = (a: T, b: T) => boolean;
 
 export interface Entities<TEntity, TId, TSlice> {
   get(): TEntity[];
   ids: TId[];
   entities: { [key: TId]: TEntity };
-  add(entity: Partial<TEntity>): this;
-  add(entities: Partial<TEntity>[]): this;
+  update(entity: Partial<TEntity>, merge?: boolean): this;
+  update(entities: Partial<TEntity>[], merge?: boolean): this;
   remove(id: TId): this;
   remove(ids: TId[]): this;
   slice<TName extends keyof TSlice>(
