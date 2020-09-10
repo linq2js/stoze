@@ -43,6 +43,9 @@ function createEntitiesWrapper(ids, entities, options) {
     ids,
     entities,
     get() {
+      if (arguments.length) {
+        return this.slice(arguments[0]);
+      }
       if (!value) {
         value = ids.map((id) => entities[id]);
       }

@@ -60,9 +60,9 @@ test("slice()", () => {
       completed: (entity) => entity.completed,
     },
   });
-  const slice1 = result1.slice("completed");
+  const slice1 = result1.get("completed");
   expect(slice1).toEqual([true, false]);
-  const slice2 = result1.slice("completed");
+  const slice2 = result1.get("completed");
   expect(slice1).toBe(slice2);
 
   // try to change title
@@ -71,7 +71,7 @@ test("slice()", () => {
     title: "new title",
     completed: true,
   });
-  const slice3 = result2.slice("completed");
+  const slice3 = result2.get("completed");
   expect(slice3).toBe(slice1);
 
   // try to change completed
@@ -80,10 +80,10 @@ test("slice()", () => {
     title: "new title",
     completed: false,
   });
-  const slice4 = result3.slice("completed");
+  const slice4 = result3.get("completed");
   expect(slice4).toEqual([false, false]);
   // the change in result3 does not affect to result2's slices
-  expect(result2.slice("completed")).toEqual([true, false]);
+  expect(result2.get("completed")).toEqual([true, false]);
 });
 
 test("update() with merge flag", () => {

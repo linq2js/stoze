@@ -26,15 +26,15 @@ export type EqualityComparer<T> = (a: T, b: T) => boolean;
 
 export interface Entities<TEntity, TId, TSlice> {
   get(): TEntity[];
+  get<TName extends keyof TSlice>(
+    sliceName: TName
+  ): SliceResultInfer<TEntity, TSlice[TName]>;
   ids: TId[];
   entities: { [key: TId]: TEntity };
   update(entity: Partial<TEntity>, merge?: boolean): this;
   update(entities: Partial<TEntity>[], merge?: boolean): this;
   remove(id: TId): this;
   remove(ids: TId[]): this;
-  slice<TName extends keyof TSlice>(
-    name: TName
-  ): SliceResultInfer<TEntity, TSlice[TName]>;
 }
 
 export type SliceResultInfer<TEntity, TSelector> = TSelector extends (
