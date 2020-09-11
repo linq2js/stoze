@@ -118,10 +118,7 @@ function createWhenMethod(taskFactory, onDispatch) {
       ? targetAction
       : [targetAction];
     return taskFactory((taskCallback, { onDispose }) => {
-      const unsubscribe = onDispatch((args) => {
-        if (!targetActions.includes(args.action)) return;
-        taskCallback(args);
-      });
+      const unsubscribe = onDispatch(targetActions, taskCallback);
       onDispose(unsubscribe);
     });
   };

@@ -23,7 +23,6 @@ export default function createStore(defaultState, options = {}) {
   } = options;
 
   const emitter = createEmitter();
-  const onChange = emitter.get("change").on;
   const taskMap = new WeakMap();
   const hookContext = { onChange, getSelectorArgs, getState };
   let syncStates;
@@ -31,6 +30,23 @@ export default function createStore(defaultState, options = {}) {
   let loading = true;
   let currentState;
   let loadPromise;
+
+  function onChange() {
+    if (arguments.length > 1) {
+      // onChange(selector, listener)
+      const [selector, listener] = arguments;
+      let prevValue = selector(
+        syncStates ? syncStates.rawValueAccessor : initialState
+      );
+      return onChange((args) => {
+        const nextValue = selector(args.state);
+        if (isEqual(nextValue, prevValue)) return;
+        prevValue = nextValue;
+        listener({ store, value: nextValue, state: args.state });
+      });
+    }
+    return emitter.on("change", arguments[0]);
+  }
 
   function onDispatch() {
     if (arguments.length > 1) {
@@ -315,22 +331,7 @@ export default function createStore(defaultState, options = {}) {
       get loading() {
         return loading;
       },
-      onChange() {
-        if (arguments.length > 1) {
-          // onChange(selector, listener)
-          const [selector, listener] = arguments;
-          let prevValue = selector(
-            syncStates ? syncStates.rawValueAccessor : initialState
-          );
-          return onChange((args) => {
-            const nextValue = selector(args.state);
-            if (isEqual(nextValue, prevValue)) return;
-            prevValue = nextValue;
-            listener({ store, value: nextValue, state: args.state });
-          });
-        }
-        return onChange(arguments[0]);
-      },
+      onChange,
       onDispatch,
       dispatch(action, payload) {
         return dispatch(action, payload);
