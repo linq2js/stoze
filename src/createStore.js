@@ -6,14 +6,16 @@ import createTask from "./createTask";
 import isEqual from "./isEqual";
 import isPromiseLike from "./isPromiseLike";
 import createEffectContext from "./createEffectContext";
-import { noop } from "./types";
+import { matchAny, noop } from "./types";
 import watch from "./watch";
 
 export const doneTask = createTask((callback) => callback(undefined));
 
-export default function createStore(defaultState = {}, options = {}) {
+export default function createStore(defaultState, options = {}) {
+  const initialState = { ...defaultState };
   const {
     init,
+    plugins = [],
     onChange: onChangeListener,
     onDispatch: onDispatchListener,
     onError: onErrorListener,
@@ -21,7 +23,6 @@ export default function createStore(defaultState = {}, options = {}) {
   } = options;
 
   const emitter = createEmitter();
-  const onDispatch = emitter.get("dispatch").on;
   const onChange = emitter.get("change").on;
   const taskMap = new WeakMap();
   const hookContext = { onChange, getSelectorArgs, getState };
@@ -30,6 +31,28 @@ export default function createStore(defaultState = {}, options = {}) {
   let loading = true;
   let currentState;
   let loadPromise;
+
+  function onDispatch() {
+    if (arguments.length > 1) {
+      const [action, listener] = arguments;
+      const actions = Array.isArray(action) ? action : [action];
+      const matchers = actions.map((action) => {
+        if (typeof action === "string") {
+          if (action === "*") return matchAny;
+          return (args) =>
+            typeof args.action === "function"
+              ? args.action.name === action
+              : args.action.$name === action;
+        }
+        return (args) => args.action === action;
+      });
+      return onDispatch((args) => {
+        if (!matchers.some((matcher) => matcher(args))) return;
+        return listener(args);
+      });
+    }
+    return emitter.on("dispatch", arguments[0]);
+  }
 
   function initState({
     $async: defaultAsyncState = {},
@@ -292,7 +315,22 @@ export default function createStore(defaultState = {}, options = {}) {
       get loading() {
         return loading;
       },
-      onChange,
+      onChange() {
+        if (arguments.length > 1) {
+          // onChange(selector, listener)
+          const [selector, listener] = arguments;
+          let prevValue = selector(
+            syncStates ? syncStates.rawValueAccessor : initialState
+          );
+          return onChange((args) => {
+            const nextValue = selector(args.state);
+            if (isEqual(nextValue, prevValue)) return;
+            prevValue = nextValue;
+            listener({ store, value: nextValue, state: args.state });
+          });
+        }
+        return onChange(arguments[0]);
+      },
       onDispatch,
       dispatch(action, payload) {
         return dispatch(action, payload);
@@ -302,7 +340,11 @@ export default function createStore(defaultState = {}, options = {}) {
     }
   );
 
-  initState(defaultState);
+  plugins.forEach((plugin) => {
+    Object.assign(initialState, plugin(store));
+  });
+
+  initState(initialState);
   onChangeListener && onChange(onChangeListener);
   onDispatchListener && onDispatch(onDispatchListener);
 

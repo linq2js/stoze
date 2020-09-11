@@ -1,4 +1,4 @@
-import stoze from "../index";
+import stoze from "../esmodule";
 
 const delay = (ms, value) =>
   new Promise((resolve) => setTimeout(resolve, ms, value));
@@ -273,8 +273,30 @@ test("init state lazily", async () => {
 
   expect(store.state.count).toBe(0);
   expect(store.loading).toBeTruthy();
-  expect(() => store.select()).toThrowError(Promise);
   await delay(15);
   expect(store.state.count).toBe(1);
   expect(store.loading).toBeFalsy();
+});
+
+test("watcher", () => {
+  const callback = jest.fn();
+  const store = stoze({
+    count1: 1,
+    count2: 2,
+    count3: 3,
+  });
+
+  store.onChange(
+    (state) => ({
+      count1: state.count1,
+      count2: state.count2,
+    }),
+    callback
+  );
+
+  store.dispatch({ count3: (value) => value + 1 });
+  expect(callback).toBeCalledTimes(0);
+  store.dispatch({ count1: (value) => value + 1 });
+  store.dispatch({ count2: (value) => value + 1 });
+  expect(callback).toBeCalledTimes(2);
 });

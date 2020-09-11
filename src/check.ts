@@ -1,10 +1,11 @@
-import stoze, { EffectContext, Mutation } from "./index";
+import stoze, { EffectContext, HistoryData, Mutation } from "./index";
 
 interface State {
   count: number;
   term: string;
   results: string[];
   select(): number;
+  history: HistoryData<State>;
 }
 
 // const store2 = stoze()
@@ -16,7 +17,10 @@ const store = stoze<State>({
   select() {
     return 1;
   },
+  history: undefined,
 });
+
+const historyPlugin = stoze.history<State>("history", "results");
 
 const Increase2: Mutation<State> = {
   $async: { name: Promise.reject() },
@@ -39,6 +43,8 @@ const Increase: Mutation<State> = {
     return value + 1 + state.select;
   },
 };
+
+store.dispatch(historyPlugin.go, -1);
 
 const IncreaseAsync = (by = 1, { dispatch, state }: EffectContext<State>) => {
   state.$select.select(1, 2, state.select);

@@ -19,9 +19,35 @@ export interface DefaultExport extends Function {
       equal?: EqualityComparer<any>;
     }
   ): Entities<TEntity, TId, TSlice>;
+  history<TState = any>(
+    dataProp: keyof TState,
+    entryProps: (keyof TState)[]
+  ): HistoryPlugin<TState>;
+  history<TState = any>(
+    dataProp: keyof TState,
+    entryProp: keyof TState
+  ): HistoryPlugin<TState>;
 }
 
+export type Plugin<TState> = (store: Store<TState>) => any;
+
 export type EqualityComparer<T> = (a: T, b: T) => boolean;
+
+export interface HistoryData<TEntry = any> {
+  index: number;
+  length: number;
+  current: TEntry;
+  next: TEntry;
+  prev: TEntry;
+  prevEntries: TEntry[],
+  nextEntries: TEntry[]
+}
+
+export interface HistoryPlugin<TState = any> extends Plugin<TState> {
+  go: Effect<TState, number>;
+  back: Effect<TState, void>;
+  forward: Effect<TState, void>;
+}
 
 export interface Entities<TEntity, TId, TSlice> {
   get(): TEntity[];
@@ -70,19 +96,32 @@ export interface Store<TState> extends StoreBase<TState> {
 export type StoreActionsInfer<TStore, TActions> = TStore &
   { [key in keyof TActions]: (payload?: any) => Task };
 
-export interface StoreBase<T> {
-  readonly state: StoreStateInfer<T>;
+export interface StoreBase<TState> {
+  readonly state: StoreStateInfer<TState>;
   readonly loading: boolean;
-  dispatch: Dispatcher<T>;
-  onDispatch(listener: DispatchListener<T>): RemoveListener;
-  onChange(listener: ChangeListener<T>): RemoveListener;
-  onError(listener: ErrorListener<T>): RemoveListener;
+  dispatch: Dispatcher<TState>;
+  onDispatch(
+    actions: ActionType[],
+    listener: DispatchListener<TState>
+  ): RemoveListener;
+  onDispatch(
+    action: ActionType,
+    listener: DispatchListener<TState>
+  ): RemoveListener;
+  onDispatch(listener: DispatchListener<TState>): RemoveListener;
+  onChange<TResult>(
+    selector: (state: TState) => TResult,
+    listener: ValueChangeListener<TState, TResult>
+  ): RemoveListener;
+  onChange(listener: StateChangeListener<TState>): RemoveListener;
+  onError(listener: ErrorListener<TState>): RemoveListener;
 }
 
 export interface StoreOptions<TState> {
   init?: Effect<TState, StateUpdater<TState>>;
+  plugins?: Plugin<TState>[];
   onDispatch: DispatchListener<TState>;
-  onChange: ChangeListener<TState>;
+  onChange: StateChangeListener<TState>;
 }
 
 export type StateUpdater<TState> = (state: TState) => void;
@@ -118,12 +157,14 @@ export interface EffectContext<TState = any> {
   all<T>(tasks: T, effect: Effect<T, AsyncCallbackInfer<T, any>>): Task;
   all<T>(tasks: T, action: Mutation<T>): Task;
 
-  when(action: Action): Task;
-  when(actions: Action[]): Task;
-  on<T>(action: Action, callback: Action<T>, payload?: T): Task;
-  on<T>(actions: Action[], callback: Action<T>, payload?: T): Task;
+  when(action: ActionType): Task;
+  when(actions: ActionType[]): Task;
+  on<T>(action: ActionType, callback: Action<T>, payload?: T): Task;
+  on<T>(actions: ActionType[], callback: Action<T>, payload?: T): Task;
   dispatch: Dispatcher<TState>;
 }
+
+export type ActionType = "*" | string | Action;
 
 export interface Loadable<T> {
   value: T;
@@ -215,9 +256,16 @@ export type DispatchListener<TState> = Listener<{
   payload: any;
 }>;
 
-export type ChangeListener<TState> = Listener<{
+export type StateChangeListener<TState> = Listener<{
   store: Store<TState>;
   state: TState;
+  mutation: Mutation<TState>;
+}>;
+
+export type ValueChangeListener<TState, TValue> = Listener<{
+  store: Store<TState>;
+  state: TState;
+  value: TValue;
   mutation: Mutation<TState>;
 }>;
 
