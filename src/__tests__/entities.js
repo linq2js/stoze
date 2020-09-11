@@ -63,7 +63,7 @@ test("slice()", () => {
     },
   });
   const slice1 = result1.get("completed");
-  expect(slice1).toEqual([true, false]);
+  expect(slice1).toEqual({ 1: true, 2: false });
   const slice2 = result1.get("completed");
   expect(slice1).toBe(slice2);
 
@@ -83,9 +83,9 @@ test("slice()", () => {
     completed: false,
   });
   const slice4 = result3.get("completed");
-  expect(slice4).toEqual([false, false]);
+  expect(slice4).toEqual({ 1: false, 2: false });
   // the change in result3 does not affect to result2's slices
-  expect(result2.get("completed")).toEqual([true, false]);
+  expect(result2.get("completed")).toEqual({ 1: true, 2: false });
 });
 
 test("update() with merge flag", () => {

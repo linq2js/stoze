@@ -19,24 +19,40 @@ export default function createEntities(
 }
 
 function createEntitiesWrapper(ids, entities, options) {
-  const { slice = {} } = options;
-  let sliceCache = new WeakMap();
-  const slicers = Object.entries(slice).map((x) => x[1]);
+  const { slice: slicerMap = {} } = options;
+  let sliceCache = options.__sliceCache || new WeakMap();
+  const slicers = Object.entries(slicerMap).map((x) => x[1]);
   let value;
 
-  if (options.__sliceCache) {
-    slicers.forEach((slicer) => {
-      const value = options.__sliceCache.get(slicer);
-      if (!value) return;
-      sliceCache.set(slicer, value);
+  function create(newIds, newEntities, customOptions) {
+    return createEntitiesWrapper(newIds || ids, newEntities || entities, {
+      ...options,
+      ...customOptions,
     });
   }
 
-  function create(newIds, newEntities) {
-    return createEntitiesWrapper(newIds || ids, newEntities || entities, {
-      ...options,
-      __sliceCache: sliceCache,
+  function copySliderCache(slicers) {
+    const cache = new WeakMap();
+    slicers.forEach((slicer) => {
+      cache.set(slicer, sliceCache.get(slicer));
     });
+    return cache;
+  }
+
+  function slice(name) {
+    if (!slicerMap || !(name in slicerMap)) {
+      throw new Error("No slicerMap named " + name);
+    }
+    const slicer = slicerMap[name];
+    let value = sliceCache.get(slicer);
+    if (!value) {
+      value = {};
+      sliceCache.set(slicer, value);
+      ids.forEach((id) => {
+        value[id] = slicer(entities[id]);
+      });
+    }
+    return value;
   }
 
   return {
@@ -44,7 +60,7 @@ function createEntitiesWrapper(ids, entities, options) {
     entities,
     get() {
       if (arguments.length) {
-        return this.slice(arguments[0]);
+        return slice(arguments[0]);
       }
       if (!value) {
         value = ids.map((id) => entities[id]);
@@ -60,65 +76,63 @@ function createEntitiesWrapper(ids, entities, options) {
       let newIds;
       let newEntities;
 
-      const affectedSlicers = [];
-      let currentSlicers = slicers.slice();
+      const unaffectedSlicers = new Set();
 
-      inputEntities.forEach((entity) => {
-        if (typeof entity !== "object") {
+      inputEntities.forEach((inputEntity) => {
+        if (typeof inputEntity !== "object") {
           throw new Error(
-            "Entity must be object type but got " + typeof entity
+            "Entity must be object type but got " + typeof inputEntity
           );
         }
 
-        const id = options.selectId(entity);
+        const id = options.selectId(inputEntity);
         if (typeof id !== "number" && typeof id !== "string") {
           throw new Error(
             "Entity id must be string or number but got " + typeof id
           );
         }
-        const current = (newEntities || entities)[id];
+        const currentEntity = (newEntities || entities)[id];
         if (merge) {
-          entity = { ...current, ...entity };
+          inputEntity = { ...currentEntity, ...inputEntity };
         }
-        const isNew = !current;
-        const equal = merge ? isEqual(entity, current) : current === entity;
+        const isNew = !currentEntity;
+        const equal = merge
+          ? isEqual(inputEntity, currentEntity)
+          : currentEntity === inputEntity;
         if (!equal) {
           if (isNew) {
             // if new one to be added, all slicers are affected
           } else {
             // find out affected slicers
-            const unaffectedSlicers = [];
-            while (currentSlicers.length) {
-              const slicer = currentSlicers.shift();
-              if (!options.equal(slicer(current), slicer(entity))) {
-                affectedSlicers.push(slicer);
-              } else {
-                unaffectedSlicers.push(slicer);
+            slicers.forEach((slicer) => {
+              const sliceCacheValue = sliceCache.get(slicer);
+              if (
+                sliceCacheValue &&
+                id in sliceCacheValue &&
+                options.equal(sliceCacheValue[id], slicer(inputEntity))
+              ) {
+                unaffectedSlicers.add(slicer);
               }
-            }
-            currentSlicers = unaffectedSlicers;
+            });
           }
           if (!newEntities) newEntities = { ...entities };
-          newEntities[id] = entity;
+          newEntities[id] = inputEntity;
         }
         if (isNew) {
-          if (slice) {
+          if (slicerMap) {
             // clear all cache
             sliceCache = new WeakMap();
           }
           if (!newIds) newIds = ids.slice();
           newIds.push(id);
-        } else {
-          // clear affected slicer cache
-          affectedSlicers.forEach((slicer) =>
-            sliceCache.set(slicer, undefined)
-          );
         }
       });
       // nothing to change
       if (!newIds && !newEntities) return this;
 
-      return create(newIds, newEntities);
+      return create(newIds, newEntities, {
+        __sliceCache: copySliderCache(unaffectedSlicers),
+      });
     },
     remove(inputId) {
       const filter = Array.isArray(inputId)
@@ -143,18 +157,7 @@ function createEntitiesWrapper(ids, entities, options) {
       if (found && !newIds) return create(emptyIds, emptyEntities);
       return newIds ? create(newIds, newEntities) : this;
     },
-    slice(name) {
-      if (!slice || !(name in slice)) {
-        throw new Error("No slice named " + name);
-      }
-      const slicer = slice[name];
-      let value = sliceCache.get(slicer);
-      if (!value) {
-        value = this.get().map(slicer);
-        sliceCache.set(slicer, value);
-      }
-      return value;
-    },
+
     clear() {
       return create(emptyIds, emptyEntities);
     },
