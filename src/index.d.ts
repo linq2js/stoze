@@ -39,8 +39,8 @@ export interface HistoryData<TEntry = any> {
   current: TEntry;
   next: TEntry;
   prev: TEntry;
-  prevEntries: TEntry[],
-  nextEntries: TEntry[]
+  prevEntries: TEntry[];
+  nextEntries: TEntry[];
 }
 
 export interface HistoryPlugin<TState = any> extends Plugin<TState> {
@@ -120,8 +120,12 @@ export interface StoreBase<TState> {
 export interface StoreOptions<TState> {
   init?: Effect<TState, StateUpdater<TState>>;
   plugins?: Plugin<TState>[];
-  onDispatch: DispatchListener<TState>;
-  onChange: StateChangeListener<TState>;
+  onDispatch?:
+    | [ActionType, DispatchListener<TState>]
+    | DispatchListener<TState>;
+  onChange?:
+    | [selector: (state: TState) => any, ValueChangeListener<TState, any>]
+    | StateChangeListener<TState>;
 }
 
 export type StateUpdater<TState> = (state: TState) => void;

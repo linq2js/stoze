@@ -345,8 +345,8 @@ export default function createStore(defaultState, options = {}) {
   });
 
   initState(initialState);
-  onChangeListener && onChange(onChangeListener);
-  onDispatchListener && onDispatch(onDispatchListener);
+  onChangeListener && onChange(...[].concat(onChangeListener));
+  onDispatchListener && onDispatch(...[].concat(onDispatchListener));
 
   if (init) {
     loadPromise = new Promise((resolve) => {
