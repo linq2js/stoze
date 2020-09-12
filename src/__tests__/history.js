@@ -86,6 +86,7 @@ test("push new entry", () => {
       { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
     ],
+    current: { value1: 3, value2: 3 },
     entries: [
       { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
@@ -95,17 +96,27 @@ test("push new entry", () => {
     nextEntries: [{ value1: 4, value2: 4 }],
   });
 
+  expect(store.state).toMatchObject({ value1: 3, value2: 3 });
+
   store.dispatch(historyPlugin.forward);
 
   expect(store.state.history).toMatchObject({
     index: 3,
+    prevEntries: [
+      { value1: 1, value2: 2 },
+      { value1: 2, value2: 2 },
+      { value1: 3, value2: 3 },
+    ],
     entries: [
       { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
       { value1: 3, value2: 3 },
       { value1: 4, value2: 4 },
     ],
+    nextEntries: [],
   });
+
+  expect(store.state).toMatchObject({ value1: 4, value2: 4 });
 
   store.dispatch(historyPlugin.go, 100);
 
@@ -130,7 +141,6 @@ test("push new entry", () => {
       { value1: 4, value2: 4 },
     ],
   });
-
   store.dispatch({
     value1: 4,
     value2: 4,

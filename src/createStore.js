@@ -44,7 +44,7 @@ export default function createStore(defaultState, options = {}) {
         }
         if (isEqual(nextValue, prevValue)) return;
         prevValue = nextValue;
-        listener({ store, value: nextValue, state: args.state });
+        listener({ ...args, store, value: nextValue, state: args.state });
       });
     }
     return emitter.on("change", arguments[0]);
@@ -72,16 +72,16 @@ export default function createStore(defaultState, options = {}) {
     return emitter.on("dispatch", arguments[0]);
   }
 
-  function initState({
-    $async: defaultAsyncState = {},
-    ...defaultSyncState
-  } = {}) {
+  function initState(
+    { $async: defaultAsyncState = {}, ...defaultSyncState } = {},
+    notify
+  ) {
     syncStates = createStateAccessors(defaultSyncState, true);
     asyncStates = createStateAccessors(defaultAsyncState, false);
     syncStates.rawValueAccessor.$async = asyncStates.rawValueAccessorFn;
     syncStates.valueAccessor.$async = asyncStates.valueAccessorFn;
     syncStates.loadableAccessor.$async = asyncStates.loadableAccessorFn;
-    notifyChange({ init: true });
+    notify && notifyChange({ init: true });
   }
 
   function dispatch(action, payload, parentTask) {
@@ -347,11 +347,11 @@ export default function createStore(defaultState, options = {}) {
     }
   );
 
-  plugins.forEach((plugin) => {
+  (Array.isArray(plugins) ? plugins : [plugins]).forEach((plugin) => {
     Object.assign(initialState, plugin(store));
   });
 
-  initState(initialState);
+  initState(initialState, false);
   onChangeListener && onChange(...[].concat(onChangeListener));
   onDispatchListener && onDispatch(...[].concat(onDispatchListener));
 
@@ -366,11 +366,14 @@ export default function createStore(defaultState, options = {}) {
             throw new Error("State is already initialized");
           }
           stateInitialized = true;
-          initState({
-            //...currentState,
-            ...initialState,
-            ...state,
-          });
+          initState(
+            {
+              //...currentState,
+              ...initialState,
+              ...state,
+            },
+            true
+          );
         }
       );
       initTask.onDone(() => {

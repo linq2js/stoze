@@ -1,47 +1,44 @@
-import { unset } from "./types";
-
 const defaultHistoryData = createHistoryData([], 0);
 
 export default function (dataProp, entryProps, options = {}) {
   const { ignoreInitialState } = options;
+  const historyMutationState = dataProp + ".action";
   if (!Array.isArray(entryProps)) {
     entryProps = [entryProps];
   }
 
-  const go = {};
-  const back = {};
-  const forward = {};
-  let goPayload = unset;
+  const historyMutation = {
+    $name: "history_mutation",
+    [historyMutationState](_, payload) {
+      return payload;
+    },
+  };
 
   entryProps.forEach((prop) => {
-    function goReducer(_, payload, state) {
-      const data = state[dataProp];
-      let index = data.index + payload;
-      if (index < -1) {
-        index = data.length ? 0 : -1;
-      } else if (index > data.length - 1) {
-        index = data.length - 1;
+    historyMutation[prop] = function (value, payload, state) {
+      if (payload.type === "go") {
+        const data = select(state);
+        return data.entries[payload.index][prop];
       }
-      return index === -1 ? undefined : data.entries[index][prop];
-    }
-
-    go[prop] = goReducer;
-    back[prop] = (value, payload, state) => goReducer(value, -1, state);
-    forward[prop] = (value, payload, state) => goReducer(value, 1, state);
+      return value;
+    };
   });
 
-  function goEffect(number, { dispatch }) {
-    try {
-      goPayload = number;
-      dispatch(go, number);
-    } finally {
-      goPayload = unset;
-    }
+  function goEffect(number, { dispatch, state }) {
+    const data = select(state);
+    const index = normalizeIndex(data.index + number, data.length);
+    dispatch(historyMutation, { type: "go", index });
+  }
+
+  function select(state) {
+    return state[dataProp];
   }
 
   return Object.assign(
+    // store setup
     function (store) {
       let data;
+      let lastMutation;
 
       store.onChange(
         (state) => {
@@ -54,17 +51,28 @@ export default function (dataProp, entryProps, options = {}) {
             data = createHistoryData([result], 0);
           }
 
-          return result;
+          return {
+            ...result,
+            [historyMutationState]: state[historyMutationState],
+          };
         },
-        ({ value, init }) => {
+        ({ value: { [historyMutationState]: mutation, ...value }, init }) => {
           if (init && ignoreInitialState) return;
           if (init) {
             data = createHistoryData([value], 0);
             return;
           }
-          if (goPayload !== unset) {
-            const index = normalizeIndex(data.index + goPayload, data.length);
-            data = createHistoryData(data.entries, index);
+
+          if (mutation && mutation !== lastMutation) {
+            lastMutation = mutation;
+            const { type, index } = mutation;
+            if (type === "go") {
+              data = createHistoryData(data.entries, index);
+            } else if (type === "clear") {
+              data = data.length
+                ? createHistoryData([data.current], 0)
+                : createHistoryData([], -1);
+            }
           } else {
             data = createHistoryData(
               data.entries.slice(0, data.index + 1).concat(value),
@@ -78,18 +86,20 @@ export default function (dataProp, entryProps, options = {}) {
         [dataProp]() {
           return data || defaultHistoryData;
         },
+        [historyMutationState]: undefined,
       };
     },
     {
-      select(state) {
-        return state[dataProp];
-      },
+      select,
       go: goEffect,
       back(payload, context) {
         return goEffect(-1, context);
       },
       forward(payload, context) {
         return goEffect(1, context);
+      },
+      clear(payload, { dispatch }) {
+        return dispatch(historyMutation, { type: "clear" });
       },
     }
   );

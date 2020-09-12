@@ -5,7 +5,7 @@ interface State {
   term: string;
   results: string[];
   select(): number;
-  history: HistoryData<State>;
+  history: HistoryData<{ count: number; term: string }>;
 }
 
 // const store2 = stoze()
@@ -108,4 +108,4 @@ const entities = stoze.entities([{ id: 1, title: "hello", completed: false }], {
   },
 });
 const completedSlice = entities.update({ id: 2 }).get("completed");
-console.log(completedSlice);
+console.log(completedSlice, store.state.history.current.count);
