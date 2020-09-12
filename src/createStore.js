@@ -28,7 +28,7 @@ export default function createStore(defaultState, options = {}) {
   let syncStates;
   let asyncStates;
   let loading = true;
-  let currentState;
+  // let currentState;
   let loadPromise;
 
   function onChange() {
@@ -74,7 +74,6 @@ export default function createStore(defaultState, options = {}) {
     $async: defaultAsyncState = {},
     ...defaultSyncState
   } = {}) {
-    currentState = defaultSyncState;
     syncStates = createStateAccessors(defaultSyncState, true);
     asyncStates = createStateAccessors(defaultAsyncState, false);
     syncStates.rawValueAccessor.$async = asyncStates.rawValueAccessorFn;
@@ -126,10 +125,10 @@ export default function createStore(defaultState, options = {}) {
   }
 
   function notifyChange() {
-    const nextState = { ...syncStates.rawValueAccessor };
-    if (!isEqual(currentState, nextState)) {
-      currentState = nextState;
-    }
+    // const nextState = { ...syncStates.rawValueAccessor };
+    // if (!isEqual(currentState, nextState)) {
+    //   currentState = nextState;
+    // }
     emitter.emit("change", { store, state: syncStates.rawValueAccessor });
   }
 
@@ -362,7 +361,8 @@ export default function createStore(defaultState, options = {}) {
           }
           stateInitialized = true;
           initState({
-            ...currentState,
+            //...currentState,
+            ...initialState,
             ...state,
           });
         }
