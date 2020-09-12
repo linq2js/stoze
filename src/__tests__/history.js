@@ -18,8 +18,8 @@ beforeEach(() => {
 
 test("push new entry", () => {
   expect(store.state.history).toMatchObject({
-    index: -1,
-    entries: [],
+    index: 0,
+    entries: [{ value1: 1, value2: 2 }],
   });
 
   store.dispatch({
@@ -27,8 +27,11 @@ test("push new entry", () => {
   });
 
   expect(store.state.history).toMatchObject({
-    index: 0,
-    entries: [{ value1: 2, value2: 2 }],
+    index: 1,
+    entries: [
+      { value1: 1, value2: 2 },
+      { value1: 2, value2: 2 },
+    ],
   });
 
   store.dispatch({
@@ -37,8 +40,9 @@ test("push new entry", () => {
   });
 
   expect(store.state.history).toMatchObject({
-    index: 1,
+    index: 2,
     entries: [
+      { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
       { value1: 3, value2: 3 },
     ],
@@ -51,8 +55,9 @@ test("push new entry", () => {
 
   // nothing added
   expect(store.state.history).toMatchObject({
-    index: 1,
+    index: 2,
     entries: [
+      { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
       { value1: 3, value2: 3 },
     ],
@@ -64,8 +69,9 @@ test("push new entry", () => {
   });
 
   expect(store.state.history).toMatchObject({
-    index: 2,
+    index: 3,
     entries: [
+      { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
       { value1: 3, value2: 3 },
       { value1: 4, value2: 4 },
@@ -75,9 +81,13 @@ test("push new entry", () => {
   store.dispatch(historyPlugin.back);
 
   expect(store.state.history).toMatchObject({
-    index: 1,
-    prevEntries: [{ value1: 2, value2: 2 }],
+    index: 2,
+    prevEntries: [
+      { value1: 1, value2: 2 },
+      { value1: 2, value2: 2 },
+    ],
     entries: [
+      { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
       { value1: 3, value2: 3 },
       { value1: 4, value2: 4 },
@@ -88,8 +98,9 @@ test("push new entry", () => {
   store.dispatch(historyPlugin.forward);
 
   expect(store.state.history).toMatchObject({
-    index: 2,
+    index: 3,
     entries: [
+      { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
       { value1: 3, value2: 3 },
       { value1: 4, value2: 4 },
@@ -99,8 +110,9 @@ test("push new entry", () => {
   store.dispatch(historyPlugin.go, 100);
 
   expect(store.state.history).toMatchObject({
-    index: 2,
+    index: 3,
     entries: [
+      { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
       { value1: 3, value2: 3 },
       { value1: 4, value2: 4 },
@@ -112,6 +124,7 @@ test("push new entry", () => {
   expect(store.state.history).toMatchObject({
     index: 0,
     entries: [
+      { value1: 1, value2: 2 },
       { value1: 2, value2: 2 },
       { value1: 3, value2: 3 },
       { value1: 4, value2: 4 },
@@ -125,9 +138,9 @@ test("push new entry", () => {
 
   expect(store.state.history).toMatchObject({
     index: 1,
-    prevEntries: [{ value1: 2, value2: 2 }],
+    prevEntries: [{ value1: 1, value2: 2 }],
     entries: [
-      { value1: 2, value2: 2 },
+      { value1: 1, value2: 2 },
       { value1: 4, value2: 4 },
     ],
     nextEntries: [],

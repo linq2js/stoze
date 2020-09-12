@@ -33,7 +33,7 @@ export type Plugin<TState> = (store: Store<TState>) => any;
 
 export type EqualityComparer<T> = (a: T, b: T) => boolean;
 
-export interface HistoryData<TEntry = any> {
+export interface HistoryData<TEntry = HistoryEntry> {
   index: number;
   length: number;
   current: TEntry;
@@ -43,7 +43,13 @@ export interface HistoryData<TEntry = any> {
   nextEntries: TEntry[];
 }
 
-export interface HistoryPlugin<TState = any> extends Plugin<TState> {
+export interface HistoryEntry {
+  [key: string]: any;
+}
+
+export interface HistoryPlugin<TState = any, TEntry = HistoryEntry>
+  extends Plugin<TState> {
+  select(state: TState): HistoryData<TEntry>;
   go: Effect<TState, number>;
   back: Effect<TState, void>;
   forward: Effect<TState, void>;

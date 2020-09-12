@@ -80,6 +80,7 @@ export default function createStore(defaultState, options = {}) {
     syncStates.rawValueAccessor.$async = asyncStates.rawValueAccessorFn;
     syncStates.valueAccessor.$async = asyncStates.valueAccessorFn;
     syncStates.loadableAccessor.$async = asyncStates.loadableAccessorFn;
+    notifyChange();
   }
 
   function dispatch(action, payload, parentTask) {

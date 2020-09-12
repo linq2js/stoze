@@ -1,8 +1,8 @@
 import { unset } from "./types";
 
-export default function (targetProp, sourceProps) {
-  if (!Array.isArray(sourceProps)) {
-    sourceProps = [sourceProps];
+export default function (dataProp, entryProps) {
+  if (!Array.isArray(entryProps)) {
+    entryProps = [entryProps];
   }
 
   const go = {};
@@ -10,9 +10,9 @@ export default function (targetProp, sourceProps) {
   const forward = {};
   let goPayload = unset;
 
-  sourceProps.forEach((prop) => {
+  entryProps.forEach((prop) => {
     function goReducer(_, payload, state) {
-      const data = state[targetProp];
+      const data = state[dataProp];
       let index = data.index + payload;
       if (index < -1) {
         index = data.length ? 0 : -1;
@@ -38,14 +38,18 @@ export default function (targetProp, sourceProps) {
 
   return Object.assign(
     function (store) {
-      let data = createHistoryData([], -1);
+      let data = undefined;
 
       store.onChange(
         (state) => {
           const result = {};
-          sourceProps.forEach((prop) => {
+          entryProps.forEach((prop) => {
             result[prop] = state[prop];
           });
+          // create initial entry
+          if (!data) {
+            data = createHistoryData([result], 0);
+          }
           return result;
         },
         ({ value }) => {
@@ -62,12 +66,15 @@ export default function (targetProp, sourceProps) {
       );
 
       return {
-        [targetProp]() {
+        [dataProp]() {
           return data;
         },
       };
     },
     {
+      select(state) {
+        return state[dataProp];
+      },
       go: goEffect,
       back(payload, context) {
         return goEffect(-1, context);
