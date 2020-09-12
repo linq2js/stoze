@@ -21,12 +21,18 @@ export interface DefaultExport extends Function {
   ): Entities<TEntity, TId, TSlice>;
   history<TState = any>(
     dataProp: keyof TState,
-    entryProps: (keyof TState)[]
+    entryProps: (keyof TState)[],
+    options?: HistoryOptions
   ): HistoryPlugin<TState>;
   history<TState = any>(
     dataProp: keyof TState,
-    entryProp: keyof TState
+    entryProp: keyof TState,
+    options?: HistoryOptions
   ): HistoryPlugin<TState>;
+}
+
+export interface HistoryOptions {
+  ignoreInitialState?: boolean;
 }
 
 export type Plugin<TState> = (store: Store<TState>) => any;
@@ -269,6 +275,7 @@ export type DispatchListener<TState> = Listener<{
 export type StateChangeListener<TState> = Listener<{
   store: Store<TState>;
   state: TState;
+  init: boolean;
   mutation: Mutation<TState>;
 }>;
 
@@ -276,6 +283,7 @@ export type ValueChangeListener<TState, TValue> = Listener<{
   store: Store<TState>;
   state: TState;
   value: TValue;
+  init: boolean;
   mutation: Mutation<TState>;
 }>;
 

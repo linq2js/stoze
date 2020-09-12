@@ -1,6 +1,9 @@
 import { unset } from "./types";
 
-export default function (dataProp, entryProps) {
+const defaultHistoryData = createHistoryData([], 0);
+
+export default function (dataProp, entryProps, options = {}) {
+  const { ignoreInitialState } = options;
   if (!Array.isArray(entryProps)) {
     entryProps = [entryProps];
   }
@@ -38,7 +41,7 @@ export default function (dataProp, entryProps) {
 
   return Object.assign(
     function (store) {
-      let data = undefined;
+      let data;
 
       store.onChange(
         (state) => {
@@ -46,13 +49,19 @@ export default function (dataProp, entryProps) {
           entryProps.forEach((prop) => {
             result[prop] = state[prop];
           });
-          // create initial entry
+
           if (!data) {
             data = createHistoryData([result], 0);
           }
+
           return result;
         },
-        ({ value }) => {
+        ({ value, init }) => {
+          if (init && ignoreInitialState) return;
+          if (init) {
+            data = createHistoryData([value], 0);
+            return;
+          }
           if (goPayload !== unset) {
             const index = normalizeIndex(data.index + goPayload, data.length);
             data = createHistoryData(data.entries, index);
@@ -67,7 +76,7 @@ export default function (dataProp, entryProps) {
 
       return {
         [dataProp]() {
-          return data;
+          return data || defaultHistoryData;
         },
       };
     },

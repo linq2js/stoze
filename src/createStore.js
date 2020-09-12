@@ -6,7 +6,7 @@ import createTask from "./createTask";
 import isEqual from "./isEqual";
 import isPromiseLike from "./isPromiseLike";
 import createEffectContext from "./createEffectContext";
-import { matchAny, noop } from "./types";
+import { matchAny, noop, unset } from "./types";
 import watch from "./watch";
 
 export const doneTask = createTask((callback) => callback(undefined));
@@ -35,11 +35,13 @@ export default function createStore(defaultState, options = {}) {
     if (arguments.length > 1) {
       // onChange(selector, listener)
       const [selector, listener] = arguments;
-      let prevValue = selector(
-        syncStates ? syncStates.rawValueAccessor : initialState
-      );
+      let prevValue = unset;
       return onChange((args) => {
         const nextValue = selector(args.state);
+        if (prevValue === unset) {
+          prevValue = nextValue;
+          return;
+        }
         if (isEqual(nextValue, prevValue)) return;
         prevValue = nextValue;
         listener({ store, value: nextValue, state: args.state });
@@ -79,7 +81,7 @@ export default function createStore(defaultState, options = {}) {
     syncStates.rawValueAccessor.$async = asyncStates.rawValueAccessorFn;
     syncStates.valueAccessor.$async = asyncStates.valueAccessorFn;
     syncStates.loadableAccessor.$async = asyncStates.loadableAccessorFn;
-    notifyChange();
+    notifyChange({ init: true });
   }
 
   function dispatch(action, payload, parentTask) {
@@ -124,12 +126,16 @@ export default function createStore(defaultState, options = {}) {
     }
   }
 
-  function notifyChange() {
+  function notifyChange(customArgs) {
     // const nextState = { ...syncStates.rawValueAccessor };
     // if (!isEqual(currentState, nextState)) {
     //   currentState = nextState;
     // }
-    emitter.emit("change", { store, state: syncStates.rawValueAccessor });
+    emitter.emit("change", {
+      store,
+      state: syncStates.rawValueAccessor,
+      ...customArgs,
+    });
   }
 
   function dispatchEffect(effect, payload, { parentTask }) {
@@ -374,6 +380,7 @@ export default function createStore(defaultState, options = {}) {
     });
   } else {
     loading = false;
+    notifyChange({ init: true });
   }
 
   if (process.env.NODE_ENV !== "production") {
