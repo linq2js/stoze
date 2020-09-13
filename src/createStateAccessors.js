@@ -178,5 +178,16 @@ export default function createStateAccessors(state, mutable) {
     },
     set,
     unset,
+    clone() {
+      const newState = {};
+      Object.entries(state).forEach(([prop, value]) => {
+        if (typeof value === "function") {
+          newState[prop] = value;
+        } else {
+          newState[prop] = rawValueAccessor[prop];
+        }
+      });
+      return createStateAccessors(newState, mutable);
+    },
   };
 }

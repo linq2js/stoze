@@ -1,6 +1,13 @@
 import createObject from "./createObject";
 import createEmitter from "./createEmitter";
 import isPromiseLike from "./isPromiseLike";
+import { noop } from "./types";
+
+export const doneTask = createTask((callback) => callback(undefined));
+
+export const foreverTask = Object.assign(createTask(noop), {
+  cancel: noop,
+});
 
 export default function createTask(fn) {
   const emitter = createEmitter();
@@ -26,6 +33,8 @@ export default function createTask(fn) {
     result,
     error,
     cancellable,
+    callback,
+    done,
     then() {
       return callPromise("then", arguments);
     },
@@ -84,6 +93,10 @@ export default function createTask(fn) {
 
   function error() {
     return props.error;
+  }
+
+  function done() {
+    return props.done;
   }
 
   function cancel() {

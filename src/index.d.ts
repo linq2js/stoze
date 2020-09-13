@@ -3,9 +3,7 @@ declare const DEV: DevExports;
 export default stoze;
 
 export interface DefaultExport extends Function {
-  <TState = any>(defaultState?: TState, options?: StoreOptions<TState>): Store<
-    TState
-  >;
+  <TState = any>(state?: TState, options?: StoreOptions<TState>): Store<TState>;
   selector<T>(selectors: Function[], combiner: (...args) => T): Selector<T>;
   entities<
     TEntity,
@@ -127,6 +125,20 @@ export interface StoreBase<TState> {
   ): RemoveListener;
   onChange(listener: StateChangeListener<TState>): RemoveListener;
   onError(listener: ErrorListener<TState>): RemoveListener;
+  transaction<TResult>(
+    fn: (transaction?: Transaction<TState>) => TResult
+  ): TResult;
+  transaction(): Transaction<TState>;
+}
+
+export interface Transaction<TState> {
+  readonly state: TState;
+  readonly parent: Transaction<TState>;
+  readonly done: boolean;
+  readonly rolledBack: boolean;
+  readonly committed: boolean;
+  commit(): void;
+  rollback(): void;
 }
 
 export interface StoreOptions<TState> {

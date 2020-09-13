@@ -2,14 +2,12 @@ import createObject from "./createObject";
 import createEmitter from "./createEmitter";
 import createStateAccessors from "./createStateAccessors";
 import is from "./is";
-import createTask from "./createTask";
+import createTask, { doneTask, foreverTask } from "./createTask";
 import isEqual from "./isEqual";
 import isPromiseLike from "./isPromiseLike";
 import createEffectContext from "./createEffectContext";
 import { matchAny, noop, unset } from "./types";
 import watch from "./watch";
-
-export const doneTask = createTask((callback) => callback(undefined));
 
 export default function createStore(defaultState, options = {}) {
   const initialState = { ...defaultState };
@@ -28,6 +26,7 @@ export default function createStore(defaultState, options = {}) {
   let syncStates;
   let asyncStates;
   let loading = true;
+  let currentTransaction;
   // let currentState;
   let loadPromise;
 
@@ -138,8 +137,84 @@ export default function createStore(defaultState, options = {}) {
     });
   }
 
+  function createTransaction(fn) {
+    if (typeof fn === "function") {
+      const t = createTransaction();
+      try {
+        const result = fn(t);
+        if (isPromiseLike(result)) {
+          return result.then(
+            (asyncResult) => {
+              t.commit();
+              return asyncResult;
+            },
+            (error) => {
+              t.rollback();
+              throw error;
+            }
+          );
+        }
+        t.commit();
+        return result;
+      } catch (error) {
+        t.rollback();
+        throw error;
+      }
+    }
+    let parentRolledBack = false;
+    let status = "active";
+    const states = [syncStates.clone(), asyncStates.clone()];
+    const transaction = createTask(noop);
+    transaction.parent = currentTransaction;
+    transaction.onCancel(() => {
+      status = "rolledBack";
+      if (parentRolledBack) return;
+      [syncStates, asyncStates] = states;
+      notifyChange();
+    });
+
+    if (transaction.parent) {
+      transaction.parent.onCancel(() => {
+        parentRolledBack = true;
+        transaction.cancel();
+      });
+    }
+    currentTransaction = transaction;
+
+    function done() {
+      return status !== "active";
+    }
+
+    return {
+      get done() {
+        return done();
+      },
+      get state() {
+        return states[0];
+      },
+      get rolledBack() {
+        return status === "rolledBack";
+      },
+      get committed() {
+        return status === "committed";
+      },
+      commit() {
+        if (done()) return;
+        status = "committed";
+        transaction.callback();
+        return true;
+      },
+      rollback() {
+        if (done()) return;
+        transaction.cancel();
+        return true;
+      },
+    };
+  }
+
   function dispatchEffect(effect, payload, { parentTask }) {
     const lastTask = taskMap.get(effect);
+    const transaction = currentTransaction;
     return createTask((callback, currentTask) => {
       if (parentTask) {
         currentTask.onDispose(parentTask.onCancel(currentTask.cancel));
@@ -154,7 +229,16 @@ export default function createStore(defaultState, options = {}) {
           lastTask,
           onDispatch,
           dispatch(action, payload) {
-            return dispatch(action, payload, currentTask);
+            if (transaction !== currentTransaction) {
+              return foreverTask;
+            }
+            const previousTransaction = currentTransaction;
+            currentTransaction = transaction;
+            try {
+              return dispatch(action, payload, currentTask);
+            } finally {
+              currentTransaction = previousTransaction;
+            }
           },
         })
       );
@@ -227,6 +311,7 @@ export default function createStore(defaultState, options = {}) {
 
   function performAsyncMutation(mutation, payload, dispatchContext) {
     const lock = {};
+    const transaction = currentTransaction;
     return createTask((callback, { cancelled, onCancel }) => {
       // start updating
       mutation.forEach(([stateObject]) => {
@@ -244,7 +329,12 @@ export default function createStore(defaultState, options = {}) {
       });
 
       function update(result, error) {
-        if (cancelled() || dispatchContext.cancelled()) return;
+        if (
+          cancelled() ||
+          dispatchContext.cancelled() ||
+          transaction !== currentTransaction
+        )
+          return;
 
         mutation.forEach(([stateObject, reducerOrValue]) => {
           let changed;
@@ -344,6 +434,7 @@ export default function createStore(defaultState, options = {}) {
       },
       select: storeHook ? select : noop,
       actions: addActions,
+      transaction: createTransaction,
     }
   );
 
