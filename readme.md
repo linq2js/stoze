@@ -1,5 +1,19 @@
 # Stoze
 
+## Features
+
+1. Async state mutation
+1. Cancellable mutation / effect
+1. Handling future effect / mutation
+1. Support React Suspense
+1. State persistence
+1. Async store initializing
+1. Debounce effect dispatching
+1. State entities
+1. State history
+1. Store transaction
+1. Store snapshot
+
 ## Real world examples
 
 1. Blog App ([CodeSandbox](https://codesandbox.io/s/stoze-blog-app-qfi25))

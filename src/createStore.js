@@ -27,6 +27,8 @@ export default function createStore(defaultState, options = {}) {
   let asyncStates;
   let loading = true;
   let currentTransaction;
+  let currentVersion = {};
+  let lastSnapshot;
   // let currentState;
   let loadPromise;
 
@@ -126,14 +128,34 @@ export default function createStore(defaultState, options = {}) {
   }
 
   function notifyChange(customArgs) {
-    // const nextState = { ...syncStates.rawValueAccessor };
-    // if (!isEqual(currentState, nextState)) {
-    //   currentState = nextState;
-    // }
+    // change store version
+    currentVersion = {};
     emitter.emit("change", {
       store,
       state: syncStates.rawValueAccessor,
       ...customArgs,
+    });
+  }
+
+  function createSnapshot() {
+    if (lastSnapshot && lastSnapshot.version === currentVersion) {
+      return lastSnapshot;
+    }
+
+    const states = [syncStates.clone(), asyncStates.clone()];
+    const version = currentVersion;
+
+    return (lastSnapshot = {
+      get version() {
+        return version;
+      },
+      get state() {
+        return states[0].rawValueAccessor;
+      },
+      revert() {
+        [syncStates, asyncStates] = [states[0].clone(), states[1].clone()];
+        notifyChange();
+      },
     });
   }
 
@@ -190,7 +212,7 @@ export default function createStore(defaultState, options = {}) {
         return done();
       },
       get state() {
-        return states[0];
+        return states[0].rawValueAccessor;
       },
       get rolledBack() {
         return status === "rolledBack";
@@ -435,6 +457,7 @@ export default function createStore(defaultState, options = {}) {
       select: storeHook ? select : noop,
       actions: addActions,
       transaction: createTransaction,
+      snapshot: createSnapshot,
     }
   );
 

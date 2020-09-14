@@ -15,7 +15,6 @@ export default function useStore(
     data.store = store;
     delete data.error;
     data.handleChange = () => {
-      if (data.unmount) return;
       data.error = undefined;
       try {
         if (selector) {
@@ -32,7 +31,6 @@ export default function useStore(
     };
   }
 
-  useEffect(() => () => void (data.unmount = true), [data]);
   useLayoutEffect(() => {
     // data.handleChange();
     return onChange(data.handleChange);

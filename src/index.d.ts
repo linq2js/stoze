@@ -129,6 +129,7 @@ export interface StoreBase<TState> {
     fn: (transaction?: Transaction<TState>) => TResult
   ): TResult;
   transaction(): Transaction<TState>;
+  snapshot(): Snapshot<TState>;
 }
 
 export interface Transaction<TState> {
@@ -139,6 +140,11 @@ export interface Transaction<TState> {
   readonly committed: boolean;
   commit(): void;
   rollback(): void;
+}
+
+export interface Snapshot<TState> {
+  readonly state: TState;
+  revert(): void;
 }
 
 export interface StoreOptions<TState> {
